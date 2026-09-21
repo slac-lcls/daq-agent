@@ -135,6 +135,12 @@ class SkillSourceTests(unittest.TestCase):
         events.write_text("".join(lines))
         audit = audit_evidence_access(events, workspace, sources, names)
         self.assertEqual(audit["skills_loaded"], sorted(["log-triage", *names]))
+        relative_lines = [line.replace(str(workspace) + "/", "") for line in lines]
+        events.write_text("".join(relative_lines))
+        self.assertEqual(audit_evidence_access(events, workspace, sources, names)["sources_read"], ["log-1"])
+        events.write_text("".join(lines) + tool("read", {"filePath": "../outside.txt"}))
+        with self.assertRaisesRegex(ValueError, "unexpected"):
+            audit_evidence_access(events, workspace, sources, names)
         events.write_text("".join(lines[1:]))
         with self.assertRaisesRegex(ValueError, "required skills"):
             audit_evidence_access(events, workspace, sources, names)

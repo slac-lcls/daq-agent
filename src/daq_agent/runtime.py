@@ -143,11 +143,11 @@ def extract_response(path: Path) -> str:
 
 def audit_evidence_access(path: Path, workspace: Path, sources: list[dict], upstream_skills: list[str] = ()) -> dict:
     """Confirm the runtime actually loaded the skill and read supplied snapshots."""
-    expected = {str(workspace / source["snapshot"]): source["id"] for source in sources}
+    expected = {str((workspace / source["snapshot"]).resolve()): source["id"] for source in sources}
     read_sources = set()
     required = {"log-triage", *upstream_skills}
     loaded = set()
-    references = {str(path) for name in upstream_skills
+    references = {str(path.resolve()) for name in upstream_skills
                   for path in (workspace / ".opencode/skills" / name).rglob("*") if path.is_file()}
     completed_calls = []
     for line in path.read_text().splitlines():
@@ -163,10 +163,14 @@ def audit_evidence_access(path: Path, workspace: Path, sources: list[dict], upst
         tool, arguments = part.get("tool"), state.get("input", {})
         if tool == "skill" and arguments.get("name") in required:
             loaded.add(arguments["name"])
-        elif tool == "read" and arguments.get("filePath") in expected:
-            read_sources.add(expected[arguments["filePath"]])
-        elif tool == "read" and arguments.get("filePath") in references:
-            pass
+        elif tool == "read" and isinstance(arguments.get("filePath"), str):
+            # OpenCode accepts both absolute and workspace-relative read paths.
+            path = Path(arguments["filePath"])
+            resolved = str((workspace / path).resolve())
+            if resolved in expected:
+                read_sources.add(expected[resolved])
+            elif resolved not in references:
+                raise ValueError("runtime completed an unexpected tool call; no report was accepted")
         else:
             raise ValueError("runtime completed an unexpected tool call; no report was accepted")
         completed_calls.append(tool)
