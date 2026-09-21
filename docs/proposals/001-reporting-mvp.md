@@ -1,7 +1,8 @@
 # Proposal 001: TMO robustness reporting
 
-Status: full reporting workflow proposed; configuration, planning, and a narrower
-[log-excerpt analysis workflow](../workflows/log-analysis.md) implemented.
+Status: full incident-report contract proposed; configuration, planning, supplied
+log analysis, and [one-command shared-log reports](../workflows/rolling-report.md)
+implemented.
 Date: 2026-09-21.
 
 ## Outcome
@@ -15,6 +16,7 @@ and presentation to the DAQ group. Distribution remains a separate action.
 Implemented today:
 
 ```bash
+daq-agent report --hutch tmo --last 2d
 daq-agent config --config config/hutches/tmo.toml
 daq-agent plan-report --config config/hutches/tmo.toml \
   --from 2026-09-18 --to 2026-09-20
@@ -23,19 +25,19 @@ daq-agent plan-report --config config/hutches/tmo.toml \
 Planned interfaces (not executable yet):
 
 ```bash
-daq-agent report --hutch tmo --partition 0 --from 2026-09-18 --to 2026-09-20
 daq-agent chat --hutch tmo --partition 0
 daq-agent chat --hutch tmo --model slac/us.anthropic.claude-fable-5-1
 ```
 
-`report` should run without a terminal conversation, save validated findings and a
-Markdown report, and return artifact locations. `chat` should prepare the same
-skills/tools and open OpenCode with a selected default model. The configuration
-and source-access resolution for these commands remains to be implemented.
+`report` runs without a terminal conversation and returns draft reports and
+artifact locations per discovered partition. Packaged TMO defaults resolve the
+shared log source and pinned skills. `chat` remains proposed: it should prepare
+the same skills/tools and open OpenCode with a selected model.
 
 Dates are local midnight in a named timezone. Timestamps require explicit offsets.
 Interpret intervals as inclusive start, exclusive end, and persist UTC instants.
-Confirm the intended partition; a sample value is not live discovery.
+`report` reads partition headers; `analyze-logs` uses the explicitly configured
+partition. A sample configuration value is not live discovery.
 
 ## Report contract
 

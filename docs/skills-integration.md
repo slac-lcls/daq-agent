@@ -105,3 +105,9 @@ enabling the corresponding skills. Historical tasks must continue to supply
 hutch, partition, launch identity, release where known, and an explicit window.
 The source configuration can later point at a merged branch or a dedicated skill
 repository. AMI's package-discovery approach remains another future source adapter.
+
+`daq-agent report --hutch tmo --last 2d` performs pinned synchronization before
+collection and analysis, reusing a verified cache when available. The collector
+is application code; it does not execute upstream scripts or give the model
+access to the shared source log tree. Each partition analysis loads and audits
+the same selected skills as `analyze-logs`.

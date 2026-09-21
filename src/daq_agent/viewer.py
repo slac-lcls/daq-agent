@@ -163,8 +163,8 @@ def latest_report(root: Path, hutch: str | None = None) -> Report:
     if hutch is not None and not re.fullmatch(r"[a-z]{3}", hutch):
         raise ValueError("hutch must be a lowercase three-letter code")
     candidates = []
-    # Current hutch/year/month/run layout plus the earlier year/month/run layout.
-    for pattern in ("*/*/*/*/manifest.json", "*/*/*/manifest.json"):
+    # Batch partition runs, current hutch/year/month/run, and earlier year/month/run.
+    for pattern in ("*/*/*/*/*/manifest.json", "*/*/*/*/manifest.json", "*/*/*/manifest.json"):
         for path in root.glob(pattern):
             try:
                 directory = path.parent.resolve(strict=True)

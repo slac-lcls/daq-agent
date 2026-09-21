@@ -7,12 +7,13 @@ recurring problems, and producing reviewable findings. TMO is the first hutch.
 The same investigation should eventually be callable from a scheduled report,
 an operator conversation, or a live incident trigger.
 
-The implementation validates configuration/time windows and can analyze explicitly
-supplied log excerpts through OpenCode. It snapshots bounded inputs, loads the
-reporting skill and pinned upstream DAQ guidance, validates returned citation
-locations, and writes a draft report. There is
-no automatic historical collection, Grafana integration, incident database, or
-continuous service yet. See [the runnable workflow](workflows/log-analysis.md).
+The implementation validates configuration/time windows, collects recent shared
+TMO launch logs, and analyzes bounded counts/excerpts through OpenCode. It also
+accepts explicitly supplied excerpts. Each partition gets a separate draft with
+pinned upstream DAQ guidance, validated citation locations, and retained evidence.
+Grafana integration, incident history, and a continuous service remain future
+work. See [one-command reporting](workflows/rolling-report.md) and
+[the supplied-excerpt workflow](workflows/log-analysis.md).
 
 ## Proposed flow
 
@@ -40,6 +41,9 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/cli.py` | Configuration, planning, and log-analysis commands |
 | `src/daq_agent/config.py` | Validate non-secret configuration |
 | `src/daq_agent/workflow.py` | Explicit time-window planning; future workflow coordination |
+| `src/daq_agent/batch_report.py` | Rolling-window collection and independent partition analyses |
+| `src/daq_agent/collectors/session_logs.py` | Bounded shared-log discovery, counts, provenance, and representative contexts |
+| `src/daq_agent/profiles/` | Installed hutch defaults usable outside the checkout |
 | `src/daq_agent/log_analysis.py` | Compose snapshot collection, skill, model run, and outputs |
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
 | `src/daq_agent/skill_sources.py` | Explicit pinned Git synchronization and verified offline skill snapshots |

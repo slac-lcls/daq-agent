@@ -19,16 +19,17 @@ class Settings:
     opencode: str = "opencode"
     output_root: str = "~/daq/agent-logs"
     daq_skills: SkillSource | None = None
+    log_root: str | None = None
 
 
 def load_settings(path: Path) -> Settings:
     with path.open("rb") as stream:
         data = tomllib.load(stream)
     fields = {"hutch", "partition", "timezone", "model"}
-    optional = {"provider_config", "opencode", "output_root"}
+    optional = {"provider_config", "opencode", "output_root", "log_root"}
     if not fields <= set(data) or set(data) - fields - optional - {"daq_skills"}:
         raise ValueError("configuration requires hutch, partition, timezone, model; "
-                         "optional fields: provider_config, opencode, output_root, daq_skills")
+                         "optional fields: provider_config, opencode, output_root, log_root, daq_skills")
     for name in optional & set(data):
         if not isinstance(data[name], str) or not data[name].strip():
             raise ValueError(f"{name} must be a nonempty string")

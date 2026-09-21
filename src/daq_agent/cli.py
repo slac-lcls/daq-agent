@@ -1,4 +1,4 @@
-"""CLI for configuration, report planning, and supplied-log analysis."""
+"""CLI for configuration, shared-log reports, supplied-log analysis, and viewing."""
 
 import argparse
 from dataclasses import asdict, replace
@@ -16,6 +16,7 @@ from .log_analysis import analyze_logs
 from .workflow import plan_report
 from .viewer import view_report
 from .skill_sources import sync_skills
+from .batch_report import generate_report, report_settings, report_window
 
 
 def default_output(settings: Settings) -> Path:
@@ -27,7 +28,7 @@ def default_output(settings: Settings) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Experimental DAQ diagnostics: plan a report or analyze supplied log excerpts."
+        description="Experimental DAQ diagnostics: collect shared logs or analyze supplied excerpts."
     )
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -51,6 +52,22 @@ def main(argv: list[str] | None = None) -> int:
     analysis.add_argument("--synthetic", action="store_true", help="label the supplied evidence as synthetic")
     analysis.add_argument("--skills-cache", type=Path, help="override the pinned skill cache root")
     analysis.add_argument("--local-skills-only", action="store_true", help="explicitly use only packaged log-triage (no upstream skills)")
+    report = commands.add_parser("report", help="collect recent shared DAQ logs and generate partition drafts")
+    report.add_argument("--hutch", required=True, help="hutch profile (currently tmo is packaged)")
+    report.add_argument("--config", type=Path, help="override the packaged hutch profile")
+    report.add_argument("--last", help="rolling elapsed window, e.g. 2d or 48h; maximum 7d")
+    report.add_argument("--from", dest="start", help="alternative explicit inclusive boundary")
+    report.add_argument("--to", dest="end", help="alternative explicit exclusive boundary")
+    report.add_argument("--partition", type=int, choices=range(8), action="append", help="repeatable; default all discovered partitions")
+    report.add_argument("--log-root", help="override the shared YYYY/MM log root")
+    report.add_argument("--output", type=Path, help="new private batch directory")
+    report.add_argument("--provider-config", type=Path)
+    report.add_argument("--opencode")
+    report.add_argument("--model")
+    report.add_argument("--timeout", type=int, default=600, help="seconds per partition; maximum 600")
+    report.add_argument("--prepare-only", action="store_true", help="collect evidence and prepare runs without model calls")
+    report.add_argument("--skills-cache", type=Path)
+    report.add_argument("--local-skills-only", action="store_true", help="explicitly disable upstream skills")
     sync = commands.add_parser("sync-skills", help="fetch configured skills at the pinned commit; no model call")
     sync.add_argument("--config", type=Path, required=True)
     sync.add_argument("--skills-cache", type=Path)
@@ -66,6 +83,22 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "view":
             return view_report(args)
+        if args.command == "report":
+            settings = report_settings(args.hutch, args.config)
+            overrides = {name: str(getattr(args, name)) for name in
+                         ("log_root", "provider_config", "opencode", "model") if getattr(args, name) is not None}
+            settings = replace(settings, **overrides)
+            if "/" not in settings.model or not all(settings.model.split("/", 1)) or any(c.isspace() for c in settings.model):
+                raise ValueError("model must have the form provider/model")
+            start, end = report_window(args.last, args.start, args.end, settings.timezone)
+            output = args.output or default_output(settings)
+            if args.output is None:
+                output = output.with_name(output.name + "-report")
+            result = generate_report(settings, start, end, output, partitions=args.partition,
+                                     prepare_only=args.prepare_only, local_skills_only=args.local_skills_only,
+                                     skills_cache=args.skills_cache, timeout=args.timeout)
+            print(json.dumps(result, indent=2))
+            return 0
         settings = load_settings(args.config)
         if args.command == "sync-skills":
             if settings.daq_skills is None:

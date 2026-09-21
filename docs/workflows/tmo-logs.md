@@ -1,7 +1,8 @@
 # Analyze supplied real TMO log excerpts
 
 Status: the application supports supplied-log analysis with pinned DAQ guidance.
-Log selection and excerpt preparation remain explicit operator steps. This does
+For automatic collection use [one-command reporting](rolling-report.md).
+This page describes manual selection and excerpt preparation. This does
 not start, stop, configure, or otherwise control the DAQ.
 
 ## Prepare the application
@@ -39,8 +40,8 @@ prefix, and any omissions/redactions. Keep useful header and surrounding context
 Never concatenate separated ranges without marking the gap. A head/tail sample
 is a smoke test, not a complete incident search or operating-window survey.
 
-The application does not automatically truncate, decompress, redact, or time-filter
-logs. Review selected inputs for credentials before sending them to the configured
+`analyze-logs` does not automatically truncate, decompress, redact, or time-filter
+its supplied inputs. Review selected inputs for credentials before sending them to the configured
 service. Rotated `.zst` files need explicit decompression and scoping first.
 Citations refer to the retained excerpt's line numbers; preserve the original-line
 mapping in its text if it is needed for further investigation.
