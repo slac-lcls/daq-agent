@@ -9,6 +9,7 @@ import shutil
 import tempfile
 
 from . import __version__
+from .artifacts import write_json, write_private
 from .collectors.logs import snapshot_logs
 from .config import Settings
 from .html_reports import write_html_bundle
@@ -16,15 +17,6 @@ from .reports import render_report, validate_findings
 from .runtime import audit_evidence_access, extract_response, run_opencode, select_provider, session_config
 from .workflow import plan_report
 from .skill_sources import retain_skills
-
-
-def write_private(path: Path, text: str) -> None:
-    path.write_text(text)
-    path.chmod(0o600)
-
-
-def write_json(path: Path, value: dict) -> None:
-    write_private(path, json.dumps(value, indent=2) + "\n")
 
 
 def build_prompt(manifest: dict) -> str:
@@ -50,7 +42,7 @@ def build_prompt(manifest: dict) -> str:
 
 
 def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], output: Path,
-                 provider_config: Path | None, executable: str, timeout: int = 180,
+                 provider_config: Path | None, executable: str, timeout: int = 600,
                  prepare_only: bool = False, synthetic: bool = False, *,
                  skills_cache: Path | None = None, local_skills_only: bool = False,
                  collected_inputs: Path | None = None) -> Path:
@@ -69,7 +61,7 @@ def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], out
         "schema_version": 1,
         "application_version": __version__,
         "workflow": "report",
-        "scope": {"kind": "hutch" if settings.partition is None else "partition"},
+        "scope": {"kind": "hutch"},
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "preparing",
         "settings": plan["settings"],

@@ -12,7 +12,6 @@ from .skill_sources import SkillSource, parse_source
 @dataclass(frozen=True)
 class Settings:
     hutch: str
-    partition: int | None
     timezone: str
     model: str
     provider_config: str | None = None
@@ -20,6 +19,11 @@ class Settings:
     output_root: str = "~/daq/agent-logs"
     daq_skills: SkillSource | None = None
     log_root: str | None = None
+
+
+def validate_model(model: str) -> None:
+    if not isinstance(model, str) or not re.fullmatch(r"[^\s/]+/[^\s]+", model):
+        raise ValueError("model must have the form provider/model")
 
 
 def load_settings(path: Path) -> Settings:
@@ -37,16 +41,15 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("hutch must be a lowercase three-letter code")
     if "partition" in data and (type(data["partition"]) is not int or not 0 <= data["partition"] <= 7):
         raise ValueError("partition must be an integer from 0 to 7")
-    data.setdefault("partition", None)
+    # Accept old configs without carrying obsolete reporting scope forward.
+    data.pop("partition", None)
     if not isinstance(data["timezone"], str):
         raise ValueError("timezone must be an IANA timezone name")
     try:
         ZoneInfo(data["timezone"])
     except (ZoneInfoNotFoundError, ValueError) as error:
         raise ValueError("timezone must be an available IANA timezone name") from error
-    model = data["model"]
-    if not isinstance(model, str) or not re.fullmatch(r"[^\s/]+/[^\s]+", model):
-        raise ValueError("model must have the form provider/model")
+    validate_model(data["model"])
     if "daq_skills" in data:
         data["daq_skills"] = parse_source(data["daq_skills"])
     return Settings(**data)

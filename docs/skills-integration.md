@@ -46,7 +46,7 @@ byte count. Repeated synchronization verifies and reuses the same cache; it does
 not follow the branch or refresh content silently. Change the configured revision
 and synchronize to adopt a new revision. A damaged cache fails verification; use
 an alternate `--skills-cache /path/to/cache` or remove that damaged cache entry and
-synchronize again. The override must be passed to both sync and analysis.
+synchronize again. Pass the same override when explicitly syncing and later reporting.
 
 Analysis verifies the cache and copies its files into the private output's
 `upstream-skills/`, then assembles the session's `.opencode/skills/`. The report
@@ -70,7 +70,6 @@ unit tests exercise synchronization against a local Git fixture.
 | `psana-daq-control` | Not selected; live DAQ state/control tools unavailable |
 | `psana-daq-monitor` | Not selected; Grafana tools/access unavailable |
 | `psana-configdb` | Not selected; ConfigDB tools unavailable |
-| `robustness-report` | Broader reporting workflow remains future work |
 
 Upstream skills describe live diagnostics, including commands, sibling skills,
 and source-tree lookups. This application's task and primary-agent instructions

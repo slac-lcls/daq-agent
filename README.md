@@ -81,11 +81,10 @@ bash examples/log-analysis/run.sh
 
 The TMO configuration supplies the shared LCLS provider/executable paths and
 pins Seshu's DAQ routing/log skills. `sync-skills` needs Git and HTTPS access;
-reporting verifies or synchronizes that exact revision before analysis. For a packaged-skill
+reporting verifies or synchronizes that exact revision before analysis. For an
 example without upstream access, pass `--local-skills-only` explicitly.
 
-The TMO configuration supplies the shared LCLS provider and executable paths.
-Override them with `--provider-config` and `--opencode` when needed. Output defaults
+Override the provider/executable defaults with `--provider-config` and `--opencode` when needed. Output defaults
 to `$HOME/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>` for the user running the
 command, using the launch date in the configured timezone. Missing directories
 are created and the resulting path is printed. Set `output_root` in the config

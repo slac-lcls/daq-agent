@@ -48,7 +48,7 @@ CI preparation.
 ## Preflight and scheduling
 
 Verify runtime version, pinned skills, tool inventory, source access and retention,
-output-directory permissions, and selected hutch/partition before a real run.
+output-directory permissions, and selected hutch/time window before a real run.
 Missing optional evidence must be reported; missing critical access must produce
 a clear incomplete/failed result rather than a healthy report.
 

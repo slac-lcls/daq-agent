@@ -52,7 +52,7 @@ accepted for compatibility but does not restrict reporting. There is no
 
 ## Implementation
 
-1. `batch_report.py` resolves one hutch/window scope.
+1. `reporting.py` resolves one hutch/window scope.
 2. `collectors/session_logs.py` discovers candidate log launches, scans captured
    file prefixes, counts patterns, and prepares bounded context with original
    paths and line numbers. Files are associated by their launch prefix; platform

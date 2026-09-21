@@ -3,7 +3,7 @@
 ## Software tests
 
 Run `python -m unittest discover -s tests -v`. Initial tests cover time windows
-(including daylight-saving changes), explicit timestamp offsets, partition/model
+(including daylight-saving changes), explicit timestamp offsets, hutch/model
 configuration validation, honest plan status, and packaged skill resources.
 CI builds and installs the wheel before running tests on Python 3.11 and 3.13.
 

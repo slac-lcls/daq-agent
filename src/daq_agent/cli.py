@@ -10,11 +10,11 @@ from pathlib import Path
 import subprocess
 
 from . import __version__
-from .config import Settings, load_settings
+from .config import Settings, load_settings, validate_model
 from .workflow import plan_report
 from .viewer import view_report
 from .skill_sources import sync_skills
-from .batch_report import generate_report, report_settings, report_window
+from .reporting import generate_report, report_settings, report_window
 
 
 def default_output(settings: Settings) -> Path:
@@ -72,9 +72,8 @@ def main(argv: list[str] | None = None) -> int:
             settings = report_settings(args.hutch, args.config)
             overrides = {name: str(getattr(args, name)) for name in
                          ("log_root", "provider_config", "opencode", "model") if getattr(args, name) is not None}
-            settings = replace(settings, partition=None, **overrides)
-            if "/" not in settings.model or not all(settings.model.split("/", 1)) or any(c.isspace() for c in settings.model):
-                raise ValueError("model must have the form provider/model")
+            settings = replace(settings, **overrides)
+            validate_model(settings.model)
             start, end = report_window(args.last, args.start, args.end, settings.timezone)
             output = args.output or default_output(settings)
             result = generate_report(settings, start, end, output, logs=args.log, synthetic=args.synthetic,

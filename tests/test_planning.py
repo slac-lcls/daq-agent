@@ -9,7 +9,7 @@ from daq_agent.workflow import parse_boundary, plan_report
 
 
 class PlanningTests(unittest.TestCase):
-    settings = Settings("tmo", 0, "America/Los_Angeles", "slac/example-model")
+    settings = Settings("tmo", "America/Los_Angeles", "slac/example-model")
 
     def test_calendar_window_tracks_dst(self):
         start = parse_boundary("2026-03-08", self.settings.timezone)
@@ -33,9 +33,11 @@ class PlanningTests(unittest.TestCase):
 
     def test_plan_preserves_scope_and_does_not_claim_execution(self):
         plan = plan_report(self.settings, "2026-09-18", "2026-09-20")
-        self.assertEqual(plan["settings"]["partition"], 0)
+        self.assertNotIn("partition", plan["settings"])
+        self.assertEqual(plan["scope"], {"kind": "hutch"})
         self.assertEqual(plan["window"]["end_exclusive"], "2026-09-20T07:00:00+00:00")
-        self.assertFalse(plan["execution_implemented"])
+        self.assertFalse(plan["execution_requested"])
+        self.assertEqual(plan["entry_skill"], "log-triage")
         self.assertEqual(plan["evidence_access"], "not_checked")
 
     def test_config_validation(self):
@@ -55,14 +57,26 @@ class PlanningTests(unittest.TestCase):
             path.write_text(valid)
             self.assertEqual(load_settings(path), self.settings)
             path.write_text(valid.replace("partition=0\n", ""))
-            self.assertIsNone(load_settings(path).partition)
+            self.assertEqual(load_settings(path), self.settings)
             for content in invalid:
                 path.write_text(content)
                 with self.subTest(content=content), self.assertRaises(ValueError):
                     load_settings(path)
 
+    def test_legacy_partition_is_discarded_before_planning(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.toml"
+            plans = []
+            for legacy in ("", "partition=0\n", "partition=6\n"):
+                path.write_text('hutch="tmo"\ntimezone="UTC"\nmodel="slac/example"\n' + legacy)
+                settings = load_settings(path)
+                plans.append(plan_report(settings, "2026-09-18", "2026-09-20"))
+            self.assertEqual(plans[0], plans[1])
+            self.assertEqual(plans[0], plans[2])
+            self.assertNotIn("partition", plans[0]["settings"])
+
     def test_reporting_skill_is_packaged(self):
-        skill = files("daq_agent").joinpath("skills/robustness-report/SKILL.md")
+        skill = files("daq_agent").joinpath("skills/log-triage/SKILL.md")
         self.assertTrue(skill.is_file())
 
 

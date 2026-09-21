@@ -5,6 +5,8 @@ import hashlib
 from html import escape
 from pathlib import Path
 
+from .reports import scope_description
+
 
 LOG_SCRIPT = r"""function highlight() {
   const match = /^#L(\d{1,9})(?:-L?(\d{1,9}))?$/.exec(location.hash);
@@ -60,7 +62,7 @@ def html_bundle(findings: dict, manifest: dict, evidence: dict[str, str]) -> dic
     settings, window = manifest["settings"], manifest["window"]
     sources = {source["id"]: source for source in manifest["sources"]}
     body = '<h1>DAQ log analysis — draft</h1><section class="scope">'
-    body += paragraph("Hutch:", settings["hutch"] + ("; scope: hutch and time window" if settings.get("partition") is None else f'; partition: {settings["partition"]}'))
+    body += paragraph("Hutch:", scope_description(settings))
     body += paragraph("Window:", f'[{window["start_inclusive"]}, {window["end_exclusive"]})')
     body += paragraph("Evidence:", f'{manifest["evidence_kind"]}; supplied excerpts only')
     body += paragraph("Grafana:", "Not queried — integration unavailable in this workflow.")

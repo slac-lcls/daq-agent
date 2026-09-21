@@ -165,8 +165,8 @@ def audit_evidence_access(path: Path, workspace: Path, sources: list[dict], upst
             loaded.add(arguments["name"])
         elif tool == "read" and isinstance(arguments.get("filePath"), str):
             # OpenCode accepts both absolute and workspace-relative read paths.
-            path = Path(arguments["filePath"])
-            resolved = str((workspace / path).resolve())
+            tool_path = Path(arguments["filePath"])
+            resolved = str((workspace / tool_path).resolve())
             if resolved in expected:
                 read_sources.add(expected[resolved])
             elif resolved not in references:

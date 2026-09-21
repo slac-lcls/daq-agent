@@ -43,11 +43,18 @@ def validate_findings(text: str, sources: list[dict]) -> dict:
     return result
 
 
+def scope_description(settings: dict) -> str:
+    """Render current scope or the partition recorded in an older report."""
+    partition = settings.get("partition")
+    scope = "scope: hutch and time window" if partition is None else f"partition: {partition}"
+    return f"{settings['hutch']}; {scope}"
+
+
 def render_report(result: dict, manifest: dict) -> str:
     settings = manifest["settings"]
     lines = [
         "# DAQ log analysis — draft", "",
-        f"Hutch: {settings['hutch']}; " + ("scope: hutch and time window" if settings.get("partition") is None else f"partition: {settings['partition']}"),
+        f"Hutch: {scope_description(settings)}",
         f"Window: [{manifest['window']['start_inclusive']}, {manifest['window']['end_exclusive']})", "",
         f"Evidence kind: **{manifest['evidence_kind']}**. Only supplied excerpts were analyzed.",
         "Grafana: **not queried — integration unavailable in this workflow**.",

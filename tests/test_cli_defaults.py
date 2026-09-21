@@ -57,7 +57,7 @@ class CliDefaultsTests(unittest.TestCase):
         with patch("daq_agent.cli.generate_report", return_value={"status": "completed", "output": str(self.root / "result")}) as generate:
             self.invoke([])
             settings = generate.call_args.args[0]
-            self.assertIsNone(settings.partition)
+            self.assertFalse(hasattr(settings, "partition"))
             self.assertEqual(settings.provider_config, str(self.root / "provider.json"))
             self.assertEqual(settings.opencode, str(self.root / "opencode"))
             self.assertEqual(generate.call_args.kwargs["logs"], [self.log])
@@ -69,7 +69,7 @@ class CliDefaultsTests(unittest.TestCase):
             self.assertEqual(settings.opencode, "other-opencode")
 
     def test_default_root_uses_invoking_users_home(self):
-        settings = Settings("tmo", 0, "America/Los_Angeles", "slac/example")
+        settings = Settings("tmo", "America/Los_Angeles", "slac/example")
         path = default_output(settings)
         self.assertEqual(path.parent.parent.parent, Path.home() / "daq/agent-logs/tmo")
 

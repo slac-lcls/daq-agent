@@ -11,14 +11,16 @@ import unittest
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-from daq_agent.batch_report import generate_report, report_settings, report_window
+from fake_runtime import write_fake_runtime
+
+from daq_agent.reporting import generate_report, report_settings, report_window
 from daq_agent.cli import main
 from daq_agent.collectors.session_logs import collect_logs, time_bucket
 from daq_agent.config import Settings
 from daq_agent.viewer import latest_report
 
 
-class BatchReportTests(unittest.TestCase):
+class ReportingTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
@@ -27,7 +29,7 @@ class BatchReportTests(unittest.TestCase):
         self.logs.mkdir()
         self.start = datetime(2026, 9, 1, tzinfo=timezone.utc)
         self.end = self.start + timedelta(days=2)
-        self.settings = Settings("tmo", 0, "UTC", "example/model", log_root=str(self.logs))
+        self.settings = Settings("tmo", "UTC", "example/model", log_root=str(self.logs))
 
     def log(self, name="2026/09/01_00:00:00_node:control.log", partition=0, body="ERROR example\n", mtime=None):
         path = self.logs / name
@@ -103,6 +105,15 @@ class BatchReportTests(unittest.TestCase):
         self.assertIn(str(other), inputs[1].read_text())
         self.assertIn(str(missing), inputs[1].read_text())
 
+    def test_excess_launches_fail_before_reading_file_contents(self):
+        for hour in range(8):
+            self.log(f"2026/09/01_{hour:02}:00:00_node:control.log")
+        with patch("daq_agent.collectors.session_logs.capture") as capture:
+            with self.assertRaisesRegex(ValueError, "seven launch groups"):
+                self.collect()
+            capture.assert_not_called()
+        self.assertFalse((self.root / "inputs").exists())
+
     def test_compressed_and_oversized_candidates_fail(self):
         path = self.log(name="2026/09/01_00:00:00_node:control.log.zst")
         with self.assertRaisesRegex(ValueError, "compressed"):
@@ -139,7 +150,7 @@ class BatchReportTests(unittest.TestCase):
         result = generate_report(self.settings, self.start, self.end, output, prepare_only=True)
         self.assertEqual(result["status"], "prepared_only")
         manifest = json.loads((output / "manifest.json").read_text())
-        self.assertIsNone(manifest["settings"]["partition"])
+        self.assertNotIn("partition", manifest["settings"])
         self.assertEqual(manifest["scope"], {"kind": "hutch"})
         self.assertEqual(len(manifest["sources"]), 3)
         self.assertEqual(manifest["status"], "prepared_only")
@@ -154,20 +165,24 @@ class BatchReportTests(unittest.TestCase):
         self.assertEqual(before, (output / "manifest.json").read_bytes())
 
     def fake_settings(self):
-        import test_log_analysis as fixtures
-        fixture = fixtures.LogAnalysisTests()
-        fixture.setUp()
-        self.addCleanup(fixture.doCleanups)
-        fixture.fake_runtime()
-        return replace(self.settings, model=fixture.settings.model,
-                       provider_config=str(fixture.provider), opencode=str(fixture.root / "fake-opencode"))
+        provider = self.root / "provider.json"
+        provider.write_text(json.dumps({"provider": {"example": {
+            "npm": "@ai-sdk/anthropic",
+            "options": {"apiKey": "{env:TEST_EXAMPLE_KEY}", "baseURL": "https://example.invalid/v1"},
+            "models": {"model": {"name": "Example"}},
+        }}}))
+        runtime = write_fake_runtime(self.root, {
+            "summary": "Synthetic multi-session report.", "findings": [],
+            "limitations": ["Synthetic fixture; no live DAQ or model access."],
+        })
+        return replace(self.settings, provider_config=str(provider), opencode=str(runtime))
 
     def test_one_analysis_reads_all_launches_and_renders_hutch_report(self):
         self.log()
         self.log("2026/09/02_00:00:00_node:other.log", partition=6)
         output = self.root / "reports/tmo/2026/09/example-report"
         from daq_agent.log_analysis import analyze_logs
-        with patch("daq_agent.batch_report.analyze_logs", wraps=analyze_logs) as analyze:
+        with patch("daq_agent.reporting.analyze_logs", wraps=analyze_logs) as analyze:
             result = generate_report(self.fake_settings(), self.start, self.end, output)
         self.assertEqual(analyze.call_count, 1)
         self.assertEqual(result["status"], "completed")
@@ -192,7 +207,7 @@ class BatchReportTests(unittest.TestCase):
 
     def test_packaged_profile_cli_prepares_without_credentials_or_checkout(self):
         self.log()
-        output = self.root / "batch"
+        output = self.root / "report"
         stream = io.StringIO()
         with redirect_stdout(stream):
             code = main(["report", "--hutch", "tmo", "--from", "2026-08-31", "--to", "2026-09-03",

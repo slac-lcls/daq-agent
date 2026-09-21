@@ -10,8 +10,7 @@ an operator conversation, or a live incident trigger.
 The implementation validates configuration/time windows, collects recent shared
 TMO launch logs, and analyzes bounded counts/excerpts through OpenCode. It also
 accepts explicitly supplied excerpts through `report --log`. One hutch/window
-gets one draft with
-pinned upstream DAQ guidance, validated citation locations, and retained evidence.
+gets one draft with pinned upstream DAQ guidance, validated citation locations, and retained evidence.
 Grafana integration, incident history, and a continuous service remain future
 work. See [one-command reporting](workflows/rolling-report.md) and
 [the supplied-excerpt workflow](workflows/log-analysis.md).
@@ -41,10 +40,11 @@ An available skill is not evidence that its tools are installed or reachable.
 | --- | --- |
 | `src/daq_agent/cli.py` | Configuration, planning, hutch reports and viewing |
 | `src/daq_agent/config.py` | Validate non-secret configuration |
-| `src/daq_agent/workflow.py` | Explicit time-window planning; future workflow coordination |
-| `src/daq_agent/batch_report.py` | Hutch/window scope, evidence collection and one analysis |
+| `src/daq_agent/workflow.py` | Time-boundary validation and read-only report plans |
+| `src/daq_agent/reporting.py` | Hutch/window scope, evidence collection and one analysis |
 | `src/daq_agent/collectors/session_logs.py` | Bounded shared-log discovery, counts, provenance, and representative contexts |
 | `src/daq_agent/profiles/` | Installed hutch defaults usable outside the checkout |
+| `src/daq_agent/artifacts.py` | Private artifact writers shared by collection and analysis |
 | `src/daq_agent/log_analysis.py` | Compose snapshot collection, skill, model run, and outputs |
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
 | `src/daq_agent/skill_sources.py` | Explicit pinned Git synchronization and verified offline skill snapshots |
@@ -69,8 +69,8 @@ An investigation is scoped by hutch and start/end UTC instants, with a display
 timezone. Platform/partition, launch/session, explicit data-taking run references,
 and deployed release are source metadata where known; they do not split reports.
 Log launches are not numbered data-taking runs. The collector does not yet query
-an authoritative run registry. The report interval is always `[start, end)`. Keep missing identity fields
-explicit; do not invent values from a current configuration or the latest launch.
+an authoritative run registry. The report interval is always `[start, end)`. Keep
+missing identity fields explicit; do not invent values from a current configuration or the latest launch.
 
 Evidence records should retain source identity, log path and line ranges or metric
 query and window, collection time, event time where known, coverage/truncation,

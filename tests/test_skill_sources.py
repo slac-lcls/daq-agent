@@ -95,7 +95,7 @@ class SkillSourceTests(unittest.TestCase):
 
     def test_analysis_retains_skills_without_fetching_or_model_calls(self):
         self.sync()
-        settings = Settings("tmo", 0, "America/Los_Angeles", "slac/example", daq_skills=self.source)
+        settings = Settings("tmo", "America/Los_Angeles", "slac/example", daq_skills=self.source)
         log = self.root / "input.log"
         log.write_text("SYNTHETIC error\n")
         with patch("daq_agent.skill_sources.subprocess.run", side_effect=AssertionError("network")):

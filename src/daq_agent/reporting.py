@@ -1,6 +1,5 @@
 """One hutch/time-window report, with automatic collection or supplied excerpts."""
 
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -58,7 +57,6 @@ def report_window(last, start, end, timezone_name, *, now=None):
 def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=False,
                     prepare_only=False, local_skills_only=False, skills_cache=None, timeout=600):
     """Collect evidence once, then run a single hutch-wide OpenCode analysis."""
-    settings = replace(settings, partition=None)
     if logs is None and not settings.log_root:
         raise ValueError("set log_root in the hutch configuration or pass --log-root")
     if synthetic and logs is None:

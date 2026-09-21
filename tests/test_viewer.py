@@ -15,7 +15,7 @@ from unittest.mock import patch
 from daq_agent.cli import main
 from daq_agent.html_reports import html_bundle, write_html_bundle
 from daq_agent.viewer import (ViewerSettings, latest_report, load_report, load_viewer_settings,
-                              make_server, save_viewer_settings, viewing_instructions)
+                              make_server, report_assets, save_viewer_settings, viewing_instructions)
 
 
 class Tags(HTMLParser):
@@ -97,6 +97,18 @@ class ViewerTests(unittest.TestCase):
         snapshot.symlink_to(external)
         with self.assertRaisesRegex(ValueError, "within the run"):
             load_report(directory)
+
+    def test_older_partition_batch_remains_viewable_after_cleanup(self):
+        original = self.report()
+        nested = self.root / "tmo/2026/09/old-batch/partition-0"
+        nested.parent.mkdir()
+        original.rename(nested)
+        report = latest_report(self.root, "tmo")
+        self.assertEqual(report.directory, nested)
+        assets = report_assets(report)
+        for name in ("report.md", "report.html"):
+            self.assertIn("tmo; partition: 0", assets[name][0].decode())
+        self.assertEqual(report.manifest["workflow"], "analyze-logs")
 
     def test_html_escapes_content_and_links_citations(self):
         report = load_report(self.report())

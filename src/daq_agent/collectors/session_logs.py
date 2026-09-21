@@ -14,7 +14,7 @@ import re
 import stat
 from zoneinfo import ZoneInfo
 
-from ..log_analysis import write_json, write_private
+from ..artifacts import write_json, write_private
 
 MAX_DISCOVERED = 20000
 MAX_SELECTED = 2000
@@ -159,6 +159,8 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
         raise ValueError("log root must be a directory")
     zone = ZoneInfo(timezone_name)
     selected = discover(root, start, end, zone)
+    if len(selected) > MAX_LAUNCHES:
+        raise ValueError("more than seven launch groups in the hutch/window; narrow --last or use report --log")
     target.mkdir(mode=0o700, parents=True, exist_ok=False)
     groups, records, total = {}, [], 0
     for launch, paths in selected.items():
@@ -216,8 +218,6 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
                 "coverage": "named launch logs selected by assumed local launch time and modification time; not complete event-window coverage"}
     write_json(target / "collection.json", metadata)
     launches = sorted(groups.items())
-    if len(launches) > MAX_LAUNCHES:
-        raise ValueError("more than seven launch groups in the hutch/window; narrow --last or use report --log")
     folder = target
     scope = [f"{hutch.upper()} hutch-wide report; requested window {start.isoformat()} <= time < {end.isoformat()}",
              f"Source root: {root}. Captured at {metadata['collected_at']}.",
