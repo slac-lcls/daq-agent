@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lcls-daq-agent"
+version = "0.1.0"
+description = "Experimental evidence-backed assistance for LCLS DAQ and AMI operations"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Mona Uervirojnangkoorn"}]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/slac-lcls/daq-agent"
+Issues = "https://github.com/slac-lcls/daq-agent/issues"
+
+[project.scripts]
+daq-agent = "daq_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+daq_agent = ["skills/*/SKILL.md", "skills/*/references/*.md"]
