@@ -4,3 +4,9 @@ hutch = "tmo"
 partition = 0
 timezone = "America/Los_Angeles"
 model = "slac/us.anthropic.claude-sonnet-5"
+
+# Shared LCLS development installation on SDF; CLI flags can override these.
+provider_config = "/sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json"
+opencode = "/sdf/group/lcls/ds/dm/apps/dev/code/.opencode/bin/opencode"
+# Expanded for the user running the command; runs are grouped by hutch and launch month.
+output_root = "~/daq/agent-logs"

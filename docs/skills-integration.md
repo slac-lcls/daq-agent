@@ -1,5 +1,14 @@
 # Skills integration proposal
 
+## Implemented example
+
+`analyze-logs` installs the application-owned `log-triage` skill into a private
+OpenCode session. The model loads it using the native skill tool and reads only
+the supplied snapshots. The broader `robustness-report` skill and the upstream
+DAQ/AMI suite are not loaded by this narrow example. This demonstrates the
+integration boundary without pretending that service-dependent skills are usable.
+See [the walkthrough](workflows/log-analysis.md) for the file map and runtime flow.
+
 ## Existing sources
 
 - [LCLS2 PR #125](https://github.com/slac-lcls/lcls2/pull/125) proposes the DAQ
@@ -14,6 +23,7 @@
 | Skill | Source | Use |
 | --- | --- | --- |
 | `robustness-report` | This package | Historical coverage, incident grouping, report contract |
+| `log-triage` | This package | Supplied-excerpt analysis without live services |
 | `psana-daq` | LCLS2 | Route general DAQ diagnosis |
 | `psana-daq-control` | LCLS2 | State/transition diagnosis |
 | `psana-daq-logs` | LCLS2 | Process-log evidence |

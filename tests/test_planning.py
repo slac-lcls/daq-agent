@@ -46,6 +46,9 @@ class PlanningTests(unittest.TestCase):
             valid.replace("America/Los_Angeles", "Unknown/Timezone"),
             valid.replace("slac/example-model", "example-model"),
             valid + 'api_key="not-a-real-key"\n',
+            valid + 'opencode=""\n',
+            valid + 'provider_config=42\n',
+            valid + 'output_root=[]\n',
         ]
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "settings.toml"

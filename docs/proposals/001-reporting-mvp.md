@@ -1,6 +1,7 @@
 # Proposal 001: TMO robustness reporting
 
-Status: proposed implementation; configuration inspection and planning implemented.
+Status: full reporting workflow proposed; configuration, planning, and a narrower
+[log-excerpt analysis workflow](../workflows/log-analysis.md) implemented.
 Date: 2026-09-21.
 
 ## Outcome
@@ -70,3 +71,7 @@ corrections. Set quality thresholds after establishing the first baseline.
 
 No dashboard, vector database, model training, or multi-agent orchestration is
 required for the initial milestone.
+
+The log-analysis prototype is a first executable slice. It does not establish
+complete historical coverage, operating exposure, recurrence ranking, or upstream
+skill integration, so it is not yet the full robustness report described above.

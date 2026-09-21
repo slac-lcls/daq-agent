@@ -1,0 +1,6 @@
+# SYNTHETIC TEST FIXTURE: not a real TMO incident or deployed release
+# hutch=tmo partition=0 launch=synthetic-launch-001 release=synthetic-example
+2026-09-18T10:00:00-07:00 control INFO requested transition configure
+2026-09-18T10:00:01-07:00 control ERROR teb0: Phase 1 error
+2026-09-18T10:00:02-07:00 control ERROR configure failed; state remains connected
+2026-09-18T10:00:03-07:00 control INFO no successful configure recorded in this excerpt
