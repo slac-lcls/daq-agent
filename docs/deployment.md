@@ -35,15 +35,20 @@ example defaults to the shared LCLS development installation on SDF. CLI flags
 can override those paths. Output defaults to the invoking user's
 `~/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>`, grouped by launch time in the
 configured timezone. Installation does not access credentials or services.
-Explicit `analyze-logs` execution imports one provider/model from the selected
+Explicit `report` execution imports one provider/model from the selected
 OpenCode JSON file, preserving an external credential
 reference. It does not modify the shared configuration or inherit its agents/MCP
 servers. `--prepare-only` requires neither credentials nor an OpenCode installation.
+When upstream skills are configured, first run `daq-agent sync-skills --config
+config/hutches/tmo.toml`. This explicit network operation caches the exact pinned
+revision. Subsequent analyses verify and retain those skill bytes without fetching.
+Use `--local-skills-only` to explicitly omit upstream guidance, including in offline
+CI preparation.
 
 ## Preflight and scheduling
 
 Verify runtime version, pinned skills, tool inventory, source access and retention,
-output-directory permissions, and selected hutch/partition before a real run.
+output-directory permissions, and selected hutch/time window before a real run.
 Missing optional evidence must be reported; missing critical access must produce
 a clear incomplete/failed result rather than a healthy report.
 

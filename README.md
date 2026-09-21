@@ -4,11 +4,11 @@ Experimental assistance for LCLS DAQ and AMI operations. The first milestone is
 an evidence-backed TMO robustness report covering an explicit historical window,
 for review by the hutch robustness monitor and the DAQ group.
 
-**Status: runnable log-analysis prototype.** Configuration inspection, report
-planning, and OpenCode analysis of explicitly supplied log excerpts work.
-`analyze-logs` produces cited draft findings and a Markdown report. Automatic DAQ
-log discovery, Grafana queries, interactive diagnosis, and continuous monitoring
-are not implemented. Model execution is explicit; `--prepare-only` makes no API calls.
+**Status: runnable reporting prototype.** `report` collects recent shared TMO
+logs and runs OpenCode with pinned DAQ skills to produce one report for the
+hutch and time window. Optional `report --log` accepts supplied excerpts.
+Reports contain cited findings, Markdown, and HTML. Grafana queries, interactive diagnosis, and
+continuous monitoring remain unimplemented. `--prepare-only` makes no model calls.
 
 ## Quick start
 
@@ -33,12 +33,42 @@ model or confirm access to evidence sources.
 The sample model is a configured LCLS gateway model, not a tested entitlement.
 Credentials are supplied by deployment configuration and never stored here.
 
+## Generate a TMO report
+
+On SDF, with the installed environment activated:
+
+```bash
+daq-agent report --hutch tmo --last 2d
+```
+
+This collects candidate logs for the last 48 elapsed hours, synchronizes the exact
+pinned skills if needed, and generates one draft for the entire hutch/window. The
+packaged TMO profile works from any directory; no interactive model selection is
+needed. To use the existing home installation without activating it:
+
+```bash
+~/daq-agent/.venv/bin/daq-agent report --hutch tmo --last 2d
+```
+
+Reports are saved under `~/daq/agent-logs/tmo/YYYY/MM/<unique-run>-report/`.
+Use `daq-agent view --hutch tmo` to open the latest completed hutch report.
+Add `--prepare-only` to collect inputs without calling the model. These are
+AI drafts requiring review, not automatically verified incident reports. See
+[one-command reporting](docs/workflows/rolling-report.md) for collection bounds,
+time assumptions and override options.
+
+Platform values remain source metadata and do not split reports. The earlier
+`analyze-logs` subcommand is replaced by optional `report --log` input selection;
+the normal command above collects logs automatically.
+
 ## Run the example workflow
 
-With the package installed and the virtual environment activated, first prepare
+With the package installed and the virtual environment activated, synchronize
+the pinned upstream skills, then prepare
 the bundled **synthetic** Configure-failure example without contacting a model:
 
 ```bash
+daq-agent sync-skills --config config/hutches/tmo.toml
 bash examples/log-analysis/run.sh --prepare-only
 ```
 
@@ -49,8 +79,12 @@ synthetic excerpts:
 bash examples/log-analysis/run.sh
 ```
 
-The TMO configuration supplies the shared LCLS provider and executable paths.
-Override them with `--provider-config` and `--opencode` when needed. Output defaults
+The TMO configuration supplies the shared LCLS provider/executable paths and
+pins Seshu's DAQ routing/log skills. `sync-skills` needs Git and HTTPS access;
+reporting verifies or synchronizes that exact revision before analysis. For an
+example without upstream access, pass `--local-skills-only` explicitly.
+
+Override the provider/executable defaults with `--provider-config` and `--opencode` when needed. Output defaults
 to `$HOME/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>` for the user running the
 command, using the launch date in the configured timezone. Missing directories
 are created and the resulting path is printed. Set `output_root` in the config
@@ -101,6 +135,8 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Documentation index](docs/README.md)
 - [Software architecture](docs/architecture.md)
 - [Runnable log-analysis workflow](docs/workflows/log-analysis.md)
+- [One-command TMO reports](docs/workflows/rolling-report.md)
+- [Real TMO log analysis](docs/workflows/tmo-logs.md)
 - [Viewing reports](docs/viewing-reports.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)

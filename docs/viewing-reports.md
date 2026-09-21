@@ -116,3 +116,7 @@ logged; responses disable caching and referrer transmission.
 
 Treat the URL as access to that report. This is a personal, temporary viewer;
 shared publishing and multi-user hosting require a separate deployment design.
+
+New `report` runs produce one hutch/window report directly in the printed output
+directory. Earlier per-partition batch reports remain discoverable and can be
+viewed explicitly. Prepared-only and failed reports are excluded.

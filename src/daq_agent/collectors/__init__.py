@@ -1,1 +1,1 @@
-"""Bounded evidence collectors. No production service discovery yet."""
+"""Read-only shared-log collection and supplied-excerpt snapshots."""

@@ -2,13 +2,14 @@
 
 Status: implemented prototype. This is an application workflow, with a separate
 credential-free CI test. It can launch real OpenCode and produce model findings;
-it does not yet discover logs on DAQ hosts or query Grafana.
+this supplied-file mode bypasses discovery. Automatic shared-log collection is
+available through `report` without `--log`; Grafana is unavailable.
 
 ## The pieces added to the repository
 
 | Piece | File | Responsibility |
 | --- | --- | --- |
-| Command | `src/daq_agent/cli.py` | Parse `analyze-logs` arguments |
+| Command | `src/daq_agent/cli.py` | Parse `report --log` arguments |
 | Python workflow | `src/daq_agent/log_analysis.py` | Coordinate inputs, skill, runtime, and outputs |
 | Collector | `src/daq_agent/collectors/logs.py` | Copy bounded log excerpts and record hashes/line counts |
 | Runtime adapter | `src/daq_agent/runtime.py` | Launch restricted OpenCode and handle timeout/failure |
@@ -25,7 +26,7 @@ need a new shell script unless it makes a concrete example easier to run.
 
 ```mermaid
 flowchart LR
-    CLI[analyze-logs] --> Snapshot[Python snapshots supplied excerpts]
+    CLI[report with supplied logs] --> Snapshot[Python snapshots supplied excerpts]
     Snapshot --> Session[Private OpenCode session]
     Skill[log-triage skill] --> Session
     Session --> Read[Model reads snapshot files]
@@ -43,10 +44,15 @@ must be updated after source changes.
 Prepare without OpenCode or credentials:
 
 ```bash
-bash examples/log-analysis/run.sh --prepare-only
+bash examples/log-analysis/run.sh --local-skills-only --prepare-only
 ```
 
-Run with the LCLS shared provider definition on SDF:
+Synchronize the pinned DAQ skills once, then run with the LCLS shared provider
+definition on SDF:
+
+```bash
+daq-agent sync-skills --config config/hutches/tmo.toml
+```
 
 ```bash
 bash examples/log-analysis/run.sh
@@ -66,7 +72,7 @@ require an explicit provider config for model execution.
 
 Without `--output`, each invocation creates a private run directory under
 `$HOME/daq/agent-logs/<hutch>/YYYY/MM/`, for example
-`tmo/2026/09/21T093000-tmo-p0-<unique-id>/`. The hutch comes from the selected
+`tmo/2026/09/21T093000-tmo-<unique-id>-report/`. The hutch comes from the selected
 configuration. The year/month reflect the launch date in
 the configured timezone, not the historical evidence window. `~` expands to the
 invoking user's home; change `output_root` to relocate this tree. Missing parent
@@ -75,13 +81,13 @@ overrides this with an exact path, which must be new.
 
 `--model provider/model` overrides the
 hutch default, but that exact model must exist in the supplied provider config.
-`--timeout` defaults to 180 seconds and may be set to at most 600. A real run uses
+`--timeout` defaults to 600 seconds and may be set to at most 600. A real run uses
 the model API; the regular CI workflow never does.
 
 ## Supply your own excerpts
 
 ```bash
-daq-agent analyze-logs --config config/hutches/tmo.toml \
+daq-agent report --hutch tmo --config config/hutches/tmo.toml \
   --from 2026-09-18T10:00:00-07:00 --to 2026-09-18T10:05:00-07:00 \
   --log /path/to/control-excerpt.log --log /path/to/teb-excerpt.log \
   --provider-config /path/to/opencode-provider.json \
@@ -112,15 +118,17 @@ OpenCode environment overrides. Configuration/data/cache/state are isolated unde
 the temporary workspace; use a node-local temporary directory on SDF. The shared
 provider file is not modified and its MCP servers/agents/plugins are not imported.
 
-OpenCode permissions allow the `log-triage` skill and reads of snapshot files.
+OpenCode permissions allow `log-triage`, the configured upstream skills,
+reads of their references, and reads of snapshot files.
 Other tools, including shell, edits, network queries, and delegation, are denied.
 This is an application-level permission boundary, not an OS/container sandbox.
 OpenCode itself must access its provider and credentials. A production deployment
-still needs reviewed host/service isolation. The model can take at most eight
-steps; process time and retained runtime output are bounded separately.
+still needs reviewed host/service isolation. The model can take at most twelve steps with upstream skills (eight in
+local-only mode); process time and retained runtime output are bounded separately.
 
-The upstream PR's diagnostic suite is not installed by this example. Integrating
-it remains the [separate reviewed dependency step](../skills-integration.md).
+The TMO configuration selects the pinned `psana-daq` and `psana-daq-logs`
+skills from the upstream PR. See [skill synchronization](../skills-integration.md).
+Other diagnostic skills and their service integrations are unavailable.
 
 ## Outputs and failure behavior
 
@@ -130,7 +138,8 @@ It contains:
 - `manifest.json`: scope, model, application/runtime version, skill hash, source
   hashes/line counts, evidence label, Grafana status, and execution status.
 - `evidence/`: unchanged input snapshots with stable source IDs.
-- `skill.md` and `prompt.txt`: the instructions/task used for this analysis.
+- `skill.md`, `upstream-skills/` (when enabled), and `prompt.txt`: instructions used
+  for this analysis, with source provenance and hashes in the manifest.
 - `events.jsonl` and `runtime.stderr.log`: private runtime output for diagnosis.
 - `response.txt`: the returned model text.
 - `findings.json` and `report.md`: emitted after schema/citation checks pass.
@@ -150,7 +159,8 @@ prove that those lines support the conclusion. Review the report against the
 evidence and the synthetic case's rubric. Grafana is always explicitly marked
 not queried in this workflow; no missing metrics are fabricated.
 
-The runtime trace must also show a completed `log-triage` skill load and a
+The runtime trace must also show completed loads of `log-triage` and every selected
+upstream skill, and a
 successful read call for each snapshot. Unexpected completed tool calls invalidate
 the result. This checks actual tool use; it does not establish full semantic
 coverage of each file or replace the runtime's permission enforcement.

@@ -27,7 +27,7 @@ class CliDefaultsTests(unittest.TestCase):
         )
         self.log = self.root / "input.log"
         self.log.write_text("SYNTHETIC example\n")
-        self.args = ["analyze-logs", "--config", str(self.config),
+        self.args = ["report", "--hutch", "tmo", "--config", str(self.config),
                      "--from", "2026-08-01", "--to", "2026-08-02", "--log", str(self.log)]
 
     def invoke(self, extra):
@@ -43,6 +43,7 @@ class CliDefaultsTests(unittest.TestCase):
             first = Path(self.invoke(["--prepare-only"])["output"])
             second = Path(self.invoke(["--prepare-only"])["output"])
             self.config.write_text(self.config.read_text().replace('hutch="tmo"', 'hutch="rix"'))
+            self.args[2] = "rix"
             other_hutch = Path(self.invoke(["--prepare-only"])["output"])
         self.assertNotEqual(first, second)
         self.assertEqual(first.parent, self.root / "new-parent/agent-logs/tmo/2026/09")
@@ -53,20 +54,22 @@ class CliDefaultsTests(unittest.TestCase):
             self.assertEqual(path.stat().st_mode & 0o777, 0o700)
 
     def test_configured_runtime_and_cli_overrides(self):
-        with patch("daq_agent.cli.analyze_logs", return_value=self.root / "result") as analyze:
+        with patch("daq_agent.cli.generate_report", return_value={"status": "completed", "output": str(self.root / "result")}) as generate:
             self.invoke([])
-            args = analyze.call_args.args
-            self.assertEqual(args[5], self.root / "provider.json")
-            self.assertEqual(args[6], str(self.root / "opencode"))
+            settings = generate.call_args.args[0]
+            self.assertFalse(hasattr(settings, "partition"))
+            self.assertEqual(settings.provider_config, str(self.root / "provider.json"))
+            self.assertEqual(settings.opencode, str(self.root / "opencode"))
+            self.assertEqual(generate.call_args.kwargs["logs"], [self.log])
             self.invoke(["--provider-config", str(self.root / "other.json"),
                          "--opencode", "other-opencode", "--output", str(self.root / "chosen")])
-            args = analyze.call_args.args
-            self.assertEqual(args[4], self.root / "chosen")
-            self.assertEqual(args[5], self.root / "other.json")
-            self.assertEqual(args[6], "other-opencode")
+            settings = generate.call_args.args[0]
+            self.assertEqual(generate.call_args.args[3], self.root / "chosen")
+            self.assertEqual(settings.provider_config, str(self.root / "other.json"))
+            self.assertEqual(settings.opencode, "other-opencode")
 
     def test_default_root_uses_invoking_users_home(self):
-        settings = Settings("tmo", 0, "America/Los_Angeles", "slac/example")
+        settings = Settings("tmo", "America/Los_Angeles", "slac/example")
         path = default_output(settings)
         self.assertEqual(path.parent.parent.parent, Path.home() / "daq/agent-logs/tmo")
 

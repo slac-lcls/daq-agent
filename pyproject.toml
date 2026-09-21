@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lcls-daq-agent"
-version = "0.2.0"
+version = "0.5.1"
 description = "Experimental evidence-backed assistance for LCLS DAQ and AMI operations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,4 +22,4 @@ daq-agent = "daq_agent.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-daq_agent = ["skills/*/SKILL.md", "skills/*/references/*.md"]
+daq_agent = ["skills/*/SKILL.md", "profiles/*.toml"]

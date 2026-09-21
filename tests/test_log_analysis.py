@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from fake_runtime import write_fake_runtime
+
 from daq_agent.collectors.logs import MAX_FILE_BYTES, snapshot_logs
 from daq_agent.config import Settings
 from daq_agent.log_analysis import analyze_logs
@@ -26,7 +28,7 @@ RESPONSE = {
 
 
 class LogAnalysisTests(unittest.TestCase):
-    settings = Settings("tmo", 0, "America/Los_Angeles", "slac/example")
+    settings = Settings("tmo", "America/Los_Angeles", "slac/example")
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -52,24 +54,7 @@ class LogAnalysisTests(unittest.TestCase):
                             synthetic=True, **kwargs)
 
     def fake_runtime(self, text=None, delay=False):
-        executable = self.root / "fake-opencode"
-        payload = json.dumps(RESPONSE if text is None else text)
-        executable.write_text(
-            "#!/usr/bin/env python3\nimport json,sys,time,os\n"
-            "from pathlib import Path\n"
-            "if '--version' in sys.argv:\n print('test-runtime'); sys.exit(0)\n"
-            "prompt=sys.stdin.read()\n"
-            "assert 'log-triage' in prompt\n"
-            "config=json.loads((Path(os.environ['OPENCODE_CONFIG_DIR'])/'opencode.json').read_text())\n"
-            "assert config['permission']['*']=='deny'\n"
-            "assert not config['mcp'] and not config['plugin']\n"
-            "print(json.dumps({'type':'tool_use','part':{'tool':'skill','state':{'status':'completed','input':{'name':'log-triage'}}}}))\n"
-            "for p in (Path.cwd()/'evidence').glob('*.txt'):\n"
-            " print(json.dumps({'type':'tool_use','part':{'tool':'read','state':{'status':'completed','input':{'filePath':str(p)}}}}))\n"
-            + ("time.sleep(60)\n" if delay else "")
-            + f"print(json.dumps({{'type':'text','part':{{'text':{payload!r}}}}}))\n"
-        )
-        executable.chmod(0o700)
+        write_fake_runtime(self.root, RESPONSE if text is None else text, delay=delay)
 
     def test_prepare_requires_no_runtime_or_credentials(self):
         output = analyze_logs(self.settings, "2026-09-18", "2026-09-19", [self.log],

@@ -1,4 +1,4 @@
-"""Report planning shared by future batch and interactive entry points."""
+"""Time boundaries and read-only plans for hutch reporting."""
 
 from dataclasses import asdict
 from datetime import date, datetime, time, timezone
@@ -33,13 +33,14 @@ def plan_report(settings: Settings, start: str, end: str) -> dict:
     return {
         "schema_version": 1,
         "status": "planned_only",
-        "execution_implemented": False,
+        "execution_requested": False,
+        "scope": {"kind": "hutch"},
         "settings": asdict(settings),
         "window": {
             "start_inclusive": start_time.isoformat(),
             "end_exclusive": end_time.isoformat(),
         },
-        "entry_skill": "robustness-report",
+        "entry_skill": "log-triage",
         "evidence_access": "not_checked",
         "model_access": "not_checked",
     }

@@ -21,5 +21,5 @@
   installation/package data when packaging changes. Do not use live DAQ or paid
   model calls as ordinary unit tests.
 - The application-facing reporting skill is in
-  `src/daq_agent/skills/robustness-report/SKILL.md`. This file describes repository
+  `src/daq_agent/skills/log-triage/SKILL.md`. This file describes repository
   development, not the runtime reporting workflow.

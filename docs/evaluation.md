@@ -3,7 +3,7 @@
 ## Software tests
 
 Run `python -m unittest discover -s tests -v`. Initial tests cover time windows
-(including daylight-saving changes), explicit timestamp offsets, partition/model
+(including daylight-saving changes), explicit timestamp offsets, hutch/model
 configuration validation, honest plan status, and packaged skill resources.
 CI builds and installs the wheel before running tests on Python 3.11 and 3.13.
 
@@ -44,3 +44,9 @@ These are proposed cases, not incidents observed by this application.
 Skill/runtime/model updates should replay relevant cases before deployment.
 Historical log timestamps and release differences must be represented rather
 than cleaned away so thoroughly that the difficult operational cases disappear.
+
+Pinned skill tests use a local Git fixture to verify exact-commit selection after
+a branch advances, supporting-file retention, offline reuse, tamper detection,
+invalid metadata/symlink rejection, and required runtime skill loads. Normal CI
+uses `--local-skills-only` for its preparation smoke test and makes no network or
+model calls for skill integration tests.

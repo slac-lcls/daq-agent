@@ -1,14 +1,15 @@
 # Configuration
 
-`hutches/tmo.toml` is the initial non-secret configuration. Pass its path explicitly
-with `--config`; the scaffold does not discover credentials or merge user-global
-OpenCode settings. TOML is used so Python 3.11+ can parse it without dependencies.
+`hutches/tmo.toml` contains the non-secret TMO defaults, also packaged for use
+outside the checkout. `report --hutch tmo` uses that profile; `--config` overrides
+it with a custom file. Python 3.11+ parses TOML without an extra dependency.
 
-The current parser accepts only hutch, partition, timezone, and model. These
-values scope a plan; they do not validate a model entitlement or source access.
-Confirm partition selection before implementing a real investigation.
+Required fields: `hutch`, `timezone`, and `model`. Optional fields:
+`provider_config`, `opencode`, `output_root`, `log_root`, and the pinned
+`daq_skills` table. A legacy numeric `partition` field is validated and discarded
+when loading old configuration; it does not appear in new report settings. Platform values from source logs remain metadata.
 
-Future source endpoints, read limits, credential references, runtime configuration,
-and output locations need a reviewed schema extension. Keep site-private overrides
-outside the repository, or in ignored `config/local/` while developing. Never put
-credential values in a hutch configuration.
+Configuration does not establish model entitlement or source access. Credentials
+remain external references in the provider configuration. Keep private overrides
+outside the repository or in ignored `config/local/`; never commit credential
+values. CLI options override corresponding profile fields.
