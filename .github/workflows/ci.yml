@@ -22,4 +22,4 @@ jobs:
       - run: daq-agent config --config config/hutches/tmo.toml
       - run: daq-agent plan-report --config config/hutches/tmo.toml --from 2026-09-18 --to 2026-09-20
       - name: Prepare synthetic log-analysis workflow without credentials
-        run: bash examples/log-analysis/run.sh --prepare-only --output "$RUNNER_TEMP/daq-log-example"
+        run: bash examples/log-analysis/run.sh --prepare-only --local-skills-only --output "$RUNNER_TEMP/daq-log-example"

@@ -10,3 +10,11 @@ provider_config = "/sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json"
 opencode = "/sdf/group/lcls/ds/dm/apps/dev/code/.opencode/bin/opencode"
 # Expanded for the user running the command; runs are grouped by hutch and launch month.
 output_root = "~/daq/agent-logs"
+
+# Temporary upstream source; branch is descriptive, execution uses the exact SHA.
+[daq_skills]
+repository = "https://github.com/slac-lcls/lcls2"
+branch = "features/psana-daq-monitor"
+revision = "198b6aa95229ef0e4ac5023c2a0d2e611124d46e"
+directory = "psana/psana/skills"
+skills = ["psana-daq", "psana-daq-logs"]

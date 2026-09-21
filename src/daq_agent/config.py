@@ -6,6 +6,8 @@ import re
 import tomllib
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .skill_sources import SkillSource, parse_source
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -16,6 +18,7 @@ class Settings:
     provider_config: str | None = None
     opencode: str = "opencode"
     output_root: str = "~/daq/agent-logs"
+    daq_skills: SkillSource | None = None
 
 
 def load_settings(path: Path) -> Settings:
@@ -23,9 +26,9 @@ def load_settings(path: Path) -> Settings:
         data = tomllib.load(stream)
     fields = {"hutch", "partition", "timezone", "model"}
     optional = {"provider_config", "opencode", "output_root"}
-    if not fields <= set(data) or set(data) - fields - optional:
+    if not fields <= set(data) or set(data) - fields - optional - {"daq_skills"}:
         raise ValueError("configuration requires hutch, partition, timezone, model; "
-                         "optional fields: provider_config, opencode, output_root")
+                         "optional fields: provider_config, opencode, output_root, daq_skills")
     for name in optional & set(data):
         if not isinstance(data[name], str) or not data[name].strip():
             raise ValueError(f"{name} must be a nonempty string")
@@ -42,4 +45,6 @@ def load_settings(path: Path) -> Settings:
     model = data["model"]
     if not isinstance(model, str) or not re.fullmatch(r"[^\s/]+/[^\s]+", model):
         raise ValueError("model must have the form provider/model")
+    if "daq_skills" in data:
+        data["daq_skills"] = parse_source(data["daq_skills"])
     return Settings(**data)

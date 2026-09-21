@@ -35,10 +35,12 @@ Credentials are supplied by deployment configuration and never stored here.
 
 ## Run the example workflow
 
-With the package installed and the virtual environment activated, first prepare
+With the package installed and the virtual environment activated, synchronize
+the pinned upstream skills, then prepare
 the bundled **synthetic** Configure-failure example without contacting a model:
 
 ```bash
+daq-agent sync-skills --config config/hutches/tmo.toml
 bash examples/log-analysis/run.sh --prepare-only
 ```
 
@@ -48,6 +50,11 @@ synthetic excerpts:
 ```bash
 bash examples/log-analysis/run.sh
 ```
+
+The TMO configuration supplies the shared LCLS provider/executable paths and
+pins Seshu's DAQ routing/log skills. `sync-skills` needs Git and HTTPS access;
+analysis then uses the verified cache without fetching updates. For a packaged-skill
+example without upstream access, pass `--local-skills-only` explicitly.
 
 The TMO configuration supplies the shared LCLS provider and executable paths.
 Override them with `--provider-config` and `--opencode` when needed. Output defaults
@@ -101,6 +108,7 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Documentation index](docs/README.md)
 - [Software architecture](docs/architecture.md)
 - [Runnable log-analysis workflow](docs/workflows/log-analysis.md)
+- [Real TMO log analysis](docs/workflows/tmo-logs.md)
 - [Viewing reports](docs/viewing-reports.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)

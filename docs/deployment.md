@@ -39,6 +39,11 @@ Explicit `analyze-logs` execution imports one provider/model from the selected
 OpenCode JSON file, preserving an external credential
 reference. It does not modify the shared configuration or inherit its agents/MCP
 servers. `--prepare-only` requires neither credentials nor an OpenCode installation.
+When upstream skills are configured, first run `daq-agent sync-skills --config
+config/hutches/tmo.toml`. This explicit network operation caches the exact pinned
+revision. Subsequent analyses verify and retain those skill bytes without fetching.
+Use `--local-skills-only` to explicitly omit upstream guidance, including in offline
+CI preparation.
 
 ## Preflight and scheduling
 

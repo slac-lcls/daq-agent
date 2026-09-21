@@ -1,80 +1,107 @@
-# Skills integration proposal
+# Pinned DAQ skill integration
 
-## Implemented example
+Status: implemented for supplied-log analysis. `analyze-logs` loads the packaged
+`log-triage` reporting instructions and the selected upstream DAQ skills. It
+requires an explicit synchronization first; analysis never fetches a branch tip.
 
-`analyze-logs` installs the application-owned `log-triage` skill into a private
-OpenCode session. The model loads it using the native skill tool and reads only
-the supplied snapshots. The broader `robustness-report` skill and the upstream
-DAQ/AMI suite are not loaded by this narrow example. This demonstrates the
-integration boundary without pretending that service-dependent skills are usable.
-See [the walkthrough](workflows/log-analysis.md) for the file map and runtime flow.
+## Temporary upstream source
 
-## Existing sources
+The TMO configuration uses the accepted revision of
+[LCLS2 PR #125](https://github.com/slac-lcls/lcls2/pull/125):
 
-- [LCLS2 PR #125](https://github.com/slac-lcls/lcls2/pull/125) proposes the DAQ
-  diagnostic suite under `psana/psana/skills/`. It was open during the initial
-  design review; deployment must select an actual reviewed revision.
-- [AMI skill discovery](https://github.com/slac-lcls/ami/blob/features/package-skill-discovery/ami/mcp_server.py)
-  locates skill directories in installed `ami` and `psana` packages and copies
-  complete directories into a session's `.opencode/skills/`.
-- [OpenCode skill discovery](https://opencode.ai/docs/skills/) exposes names and
-  descriptions, then loads full instructions through the native `skill` tool.
+```toml
+[daq_skills]
+repository = "https://github.com/slac-lcls/lcls2"
+branch = "features/psana-daq-monitor"
+revision = "198b6aa95229ef0e4ac5023c2a0d2e611124d46e"
+directory = "psana/psana/skills"
+skills = ["psana-daq", "psana-daq-logs"]
+```
 
-| Skill | Source | Use |
-| --- | --- | --- |
-| `robustness-report` | This package | Historical coverage, incident grouping, report contract |
-| `log-triage` | This package | Supplied-excerpt analysis without live services |
-| `psana-daq` | LCLS2 | Route general DAQ diagnosis |
-| `psana-daq-control` | LCLS2 | State/transition diagnosis |
-| `psana-daq-logs` | LCLS2 | Process-log evidence |
-| `psana-daq-monitor` | LCLS2 | Grafana/Prometheus DAQ metrics |
-| `psana-configdb` | LCLS2 | Read-only configuration evidence |
-| `ami-performance-monitor` | AMI | AMI metrics/traces |
+The branch identifies ongoing development; the full commit SHA selects the actual
+bytes. Moving the skills later requires updating this source configuration, not
+rewriting the workflow. GitHub Issues are not a supported skill source yet; they
+could later provide separately captured troubleshooting knowledge.
 
-Some upstream skills reference additional skills such as `elog-search`. Inventory
-and resolve these dependencies before claiming that the full workflow is usable.
+## Synchronize, then analyze
 
-## Proposed session assembly
+From the repository, with the current package installed:
 
-1. Resolve an allowlist of skills from reviewed, pinned source revisions or
-   installed packages with recorded provenance. Do not download branch tips on
-   every investigation or import psana merely to discover Markdown resources.
-2. Verify required frontmatter (`name`, `description`), unique names, referenced
-   resources, and that installed distributions actually include the skill files.
-3. Copy each full skill directory, including references/scripts, to a generated
-   session workspace. Treat packaged executable helpers as reviewed code.
-4. Explicitly load the reporting task instructions; make diagnostic skills
-   available on demand. Avoid loading all manuals into every prompt.
-5. Configure matching tools and check access. The existing Grafana skill requires
-   specific MCP tools; log/control/configuration skills also assume commands,
-   network routes, or libraries. Adapt those interfaces deliberately.
-6. Record exact skill provenance and content hashes in the session manifest.
+```bash
+daq-agent sync-skills --config config/hutches/tmo.toml
+bash examples/log-analysis/run.sh --prepare-only
+bash examples/log-analysis/run.sh
+daq-agent view
+```
 
-A generated deployment manifest will eventually lock upstream commit IDs and
-skill paths. The initial scaffold does not pin or install an upstream dependency;
-review and behavioral evaluation must happen first.
+`sync-skills` requires Git and HTTPS access to the source repository. It fetches
+the pinned commit into a temporary Git object store without checking out or
+executing upstream code. It retains complete selected directories, including
+supporting references, under `$XDG_CACHE_HOME/daq-agent/skills/<source-hash>`
+(default `~/.cache/daq-agent/skills/`). It does not install or import psana.
 
-## Scope and permission integration
+It validates names/frontmatter, regular files, file counts, and size limits.
+Symlinks and submodules are rejected. Each retained file has a SHA-256 hash and
+byte count. Repeated synchronization verifies and reuses the same cache; it does
+not follow the branch or refresh content silently. Change the configured revision
+and synchronize to adopt a new revision. A damaged cache fails verification; use
+an alternate `--skills-cache /path/to/cache` or remove that damaged cache entry and
+synchronize again. The override must be passed to both sync and analysis.
 
-Historical tasks supply explicit hutch, partition, launch identities, timezone,
-and time window. Override diagnostic defaults such as `now` and active-hutch
-discovery when they conflict with the requested investigation. Today's state or
-ConfigDB contents do not establish yesterday's state/configuration.
+Analysis verifies the cache and copies its files into the private output's
+`upstream-skills/`, then assembles the session's `.opencode/skills/`. The report
+manifest records source repository, branch, commit, selected names, and all file
+hashes. Its runtime audit must show actual loads of all selected skills as well
+as reads of every supplied evidence snapshot. Retained skills allow inspection of
+what was used even if the upstream branch disappears.
 
-The initial workflow permits evidence reads and local report output only. Provide
-bounded tools and runtime/OS permissions that enforce that boundary. Merely placing
-"read-only" in a skill or hiding mutating skills is insufficient if arbitrary
-shell commands still have operational privileges.
+For an explicitly local-only run, pass `--local-skills-only`. The manifest records
+that choice; there is no silent fallback when configured skills are missing.
+Credential-free CI uses this option with synthetic fixtures, while dedicated
+unit tests exercise synchronization against a local Git fixture.
 
-The shared LCLS OpenCode configuration is useful for development, but deployment
-must explicitly resolve provider configuration, credentials, tool names, and
-permission merging. Do not inherit unrelated global agents, skills, or tools
-without review. Do not modify the shared configuration during application setup.
+## Workflow scope and tool availability
 
-## Updates
+| Skill | Current use |
+| --- | --- |
+| `log-triage` | Packaged report contract, evidence handling, uncertainty |
+| `psana-daq` | Pinned DAQ routing and release/session interpretation guidance |
+| `psana-daq-logs` | Pinned log-header, component, severity, and session guidance |
+| `psana-daq-control` | Not selected; live DAQ state/control tools unavailable |
+| `psana-daq-monitor` | Not selected; Grafana tools/access unavailable |
+| `psana-configdb` | Not selected; ConfigDB tools unavailable |
+| `robustness-report` | Broader reporting workflow remains future work |
 
-Update a pinned skill revision through a normal pull request. Replay relevant
-evaluation cases, compare evidence and conclusions, then release. Prefer fixes
-in the source repository over locally divergent skill copies. Record known
-limitations and deployed-release assumptions; upstream Markdown is diagnostic
-guidance to validate, not infallible evidence.
+Upstream skills describe live diagnostics, including commands, sibling skills,
+and source-tree lookups. This application's task and primary-agent instructions
+explicitly limit their use to interpreting supplied snapshots. Current DAQ state
+cannot establish historical state. Untimestamped component lines must not be
+assigned an event time merely from a launch filename. Skill examples are guidance,
+not evidence about the selected launch.
+
+OpenCode permits only selected skill loads, evidence reads, and reads of selected
+skill reference files. Shell, edits, SSH, live state/control, Grafana, ConfigDB,
+other skills, and delegation remain denied. Skills do not grant access. An
+unexpected completed tool call invalidates the report. The session has at most
+12 model steps with upstream skills (8 in local-only mode), plus the configured
+wall-clock/output limits. These are application permissions, not an OS sandbox.
+
+## Real TMO logs
+
+See [the TMO walkthrough](workflows/tmo-logs.md) for scoped input preparation and
+invocation. This release supports analysis of readable, supplied excerpts. It does
+not yet implement automatic session collection, multi-file time filtering,
+continuous monitoring, or DAQ operations.
+
+## Future source and capability changes
+
+Update the pin through a normal code review, inspect upstream instruction and
+support-file changes, and replay evaluation cases. Preserve fixes upstream rather
+than maintaining divergent local copies. A skill's presence is not proof that
+its tools, host routes, or credentials work.
+
+Add live tools individually with explicit scope and read-only boundaries before
+enabling the corresponding skills. Historical tasks must continue to supply
+hutch, partition, launch identity, release where known, and an explicit window.
+The source configuration can later point at a merged branch or a dedicated skill
+repository. AMI's package-discovery approach remains another future source adapter.

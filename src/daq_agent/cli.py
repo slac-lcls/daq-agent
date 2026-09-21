@@ -15,6 +15,7 @@ from .config import Settings, load_settings
 from .log_analysis import analyze_logs
 from .workflow import plan_report
 from .viewer import view_report
+from .skill_sources import sync_skills
 
 
 def default_output(settings: Settings) -> Path:
@@ -48,6 +49,11 @@ def main(argv: list[str] | None = None) -> int:
     analysis.add_argument("--timeout", type=int, default=180, help="OpenCode timeout in seconds (maximum 600)")
     analysis.add_argument("--prepare-only", action="store_true", help="snapshot evidence and instructions without a model call")
     analysis.add_argument("--synthetic", action="store_true", help="label the supplied evidence as synthetic")
+    analysis.add_argument("--skills-cache", type=Path, help="override the pinned skill cache root")
+    analysis.add_argument("--local-skills-only", action="store_true", help="explicitly use only packaged log-triage (no upstream skills)")
+    sync = commands.add_parser("sync-skills", help="fetch configured skills at the pinned commit; no model call")
+    sync.add_argument("--config", type=Path, required=True)
+    sync.add_argument("--skills-cache", type=Path)
     viewer = commands.add_parser("view", help="browse the latest completed report or a supplied run")
     viewer.add_argument("run", nargs="?", type=Path, help="completed run directory (default: latest valid report)")
     viewer.add_argument("--root", type=Path, help="report search root (default: ~/daq/agent-logs or personal settings)")
@@ -61,6 +67,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "view":
             return view_report(args)
         settings = load_settings(args.config)
+        if args.command == "sync-skills":
+            if settings.daq_skills is None:
+                raise ValueError("configuration has no daq_skills source")
+            directory = sync_skills(settings.daq_skills, args.skills_cache)
+            print(json.dumps({"status": "synced", "revision": settings.daq_skills.revision, "cache": str(directory)}, indent=2))
+            return 0
         if args.command == "analyze-logs":
             if args.model:
                 if "/" not in args.model or not all(args.model.split("/", 1)) or any(c.isspace() for c in args.model):
@@ -72,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
             output = args.output.expanduser() if args.output else default_output(settings)
             directory = analyze_logs(settings, args.start, args.end, args.log, output,
                                      provider, executable, args.timeout,
-                                     args.prepare_only, args.synthetic)
+                                     args.prepare_only, args.synthetic,
+                                     skills_cache=args.skills_cache, local_skills_only=args.local_skills_only)
             result = {"status": "prepared_only" if args.prepare_only else "completed", "output": str(directory)}
         else:
             result = asdict(settings) if args.command == "config" else plan_report(settings, args.start, args.end)

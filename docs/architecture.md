@@ -8,8 +8,9 @@ The same investigation should eventually be callable from a scheduled report,
 an operator conversation, or a live incident trigger.
 
 The implementation validates configuration/time windows and can analyze explicitly
-supplied log excerpts through OpenCode. It snapshots bounded inputs, loads a local
-skill, validates returned citation locations, and writes a draft report. There is
+supplied log excerpts through OpenCode. It snapshots bounded inputs, loads the
+reporting skill and pinned upstream DAQ guidance, validates returned citation
+locations, and writes a draft report. There is
 no automatic historical collection, Grafana integration, incident database, or
 continuous service yet. See [the runnable workflow](workflows/log-analysis.md).
 
@@ -41,6 +42,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/workflow.py` | Explicit time-window planning; future workflow coordination |
 | `src/daq_agent/log_analysis.py` | Compose snapshot collection, skill, model run, and outputs |
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
+| `src/daq_agent/skill_sources.py` | Explicit pinned Git synchronization and verified offline skill snapshots |
 | `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
 | `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
 | `src/daq_agent/html_reports.py` | Portable HTML reports and line-numbered evidence pages |

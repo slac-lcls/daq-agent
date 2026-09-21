@@ -6,9 +6,12 @@ description: Analyze explicitly supplied LCLS DAQ log excerpts, distinguish obse
 # Log excerpt triage
 
 This workflow supplies a hutch, partition, time window, and a small list of log
-snapshots. Read those files using the available read tool. Only this skill and
-those snapshots are available; do not attempt Grafana, live control, ConfigDB,
-shell commands, or upstream diagnostic skills that were not installed.
+snapshots. Read those files using the available read tool. The task lists any
+additional installed diagnostic skills; load those explicitly as guidance. Only
+selected skills, their references, and supplied snapshots are available. Do not
+attempt Grafana, live control, ConfigDB, shell commands, or unselected skills.
+Upstream live-discovery instructions do not apply to this supplied-log workflow.
+Skill examples and references are guidance, not evidence about this launch.
 
 ## Interpretation
 
@@ -26,6 +29,12 @@ shell commands, or upstream diagnostic skills that were not installed.
 - Do not infer historical state from current state. Excerpts may contain context
   outside the requested window; exclude that from incident attribution and flag
   ambiguous timestamps/session identity.
+- A timestamp without an explicit timezone/offset is not established UTC. The
+  requested window timezone does not prove the source log timezone. Quote bare
+  timestamps as written and mark their timezone unknown unless supplied evidence
+  establishes it. Do not convert numeric timestamps without an established epoch.
+- State transitions and scan-step cycling alone do not establish a failure or a
+  clean shutdown. Separate normal operational context from actionable anomalies.
 - Keep synthetic evidence labeled synthetic. Missing metrics or log excerpts mean
   incomplete evidence, not healthy operation. Empty findings are allowed.
 

@@ -43,10 +43,15 @@ must be updated after source changes.
 Prepare without OpenCode or credentials:
 
 ```bash
-bash examples/log-analysis/run.sh --prepare-only
+bash examples/log-analysis/run.sh --local-skills-only --prepare-only
 ```
 
-Run with the LCLS shared provider definition on SDF:
+Synchronize the pinned DAQ skills once, then run with the LCLS shared provider
+definition on SDF:
+
+```bash
+daq-agent sync-skills --config config/hutches/tmo.toml
+```
 
 ```bash
 bash examples/log-analysis/run.sh
@@ -112,15 +117,17 @@ OpenCode environment overrides. Configuration/data/cache/state are isolated unde
 the temporary workspace; use a node-local temporary directory on SDF. The shared
 provider file is not modified and its MCP servers/agents/plugins are not imported.
 
-OpenCode permissions allow the `log-triage` skill and reads of snapshot files.
+OpenCode permissions allow `log-triage`, the configured upstream skills,
+reads of their references, and reads of snapshot files.
 Other tools, including shell, edits, network queries, and delegation, are denied.
 This is an application-level permission boundary, not an OS/container sandbox.
 OpenCode itself must access its provider and credentials. A production deployment
-still needs reviewed host/service isolation. The model can take at most eight
-steps; process time and retained runtime output are bounded separately.
+still needs reviewed host/service isolation. The model can take at most twelve steps with upstream skills (eight in
+local-only mode); process time and retained runtime output are bounded separately.
 
-The upstream PR's diagnostic suite is not installed by this example. Integrating
-it remains the [separate reviewed dependency step](../skills-integration.md).
+The TMO configuration selects the pinned `psana-daq` and `psana-daq-logs`
+skills from the upstream PR. See [skill synchronization](../skills-integration.md).
+Other diagnostic skills and their service integrations are unavailable.
 
 ## Outputs and failure behavior
 
@@ -130,7 +137,8 @@ It contains:
 - `manifest.json`: scope, model, application/runtime version, skill hash, source
   hashes/line counts, evidence label, Grafana status, and execution status.
 - `evidence/`: unchanged input snapshots with stable source IDs.
-- `skill.md` and `prompt.txt`: the instructions/task used for this analysis.
+- `skill.md`, `upstream-skills/` (when enabled), and `prompt.txt`: instructions used
+  for this analysis, with source provenance and hashes in the manifest.
 - `events.jsonl` and `runtime.stderr.log`: private runtime output for diagnosis.
 - `response.txt`: the returned model text.
 - `findings.json` and `report.md`: emitted after schema/citation checks pass.
@@ -150,7 +158,8 @@ prove that those lines support the conclusion. Review the report against the
 evidence and the synthetic case's rubric. Grafana is always explicitly marked
 not queried in this workflow; no missing metrics are fabricated.
 
-The runtime trace must also show a completed `log-triage` skill load and a
+The runtime trace must also show completed loads of `log-triage` and every selected
+upstream skill, and a
 successful read call for each snapshot. Unexpected completed tool calls invalidate
 the result. This checks actual tool use; it does not establish full semantic
 coverage of each file or replace the runtime's permission enforcement.
