@@ -90,6 +90,9 @@ class LogAnalysisTests(unittest.TestCase):
         self.assertEqual(json.loads((output / "findings.json").read_text()), RESPONSE)
         self.assertIn("synthetic", (output / "report.md").read_text())
         self.assertIn("not queried", (output / "report.md").read_text())
+        self.assertTrue((output / "report.html").is_file())
+        self.assertTrue((output / "logs/log-1.html").is_file())
+        self.assertIn("completed_at", manifest)
         self.assertEqual(output.stat().st_mode & 0o777, 0o700)
 
     def test_unknown_citation_fails_without_report(self):

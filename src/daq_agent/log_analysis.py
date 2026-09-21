@@ -11,6 +11,7 @@ import tempfile
 from . import __version__
 from .collectors.logs import snapshot_logs
 from .config import Settings
+from .html_reports import write_html_bundle
 from .reports import render_report, validate_findings
 from .runtime import audit_evidence_access, extract_response, run_opencode, select_provider, session_config
 from .workflow import plan_report
@@ -52,7 +53,8 @@ def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], out
     provider = None
     if not prepare_only:
         if provider_config is None:
-            raise ValueError("--provider-config is required unless --prepare-only is used")
+            raise ValueError("set provider_config in the DAQ agent config or pass --provider-config "
+                             "unless --prepare-only is used")
         provider = select_provider(provider_config, settings.model)
     output = output.absolute()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -98,6 +100,8 @@ def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], out
         findings = validate_findings(response, manifest["sources"])
         write_json(output / "findings.json", findings)
         write_private(output / "report.md", render_report(findings, manifest))
+        write_html_bundle(output, findings, manifest)
+        manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
         manifest["status"] = "completed"
         manifest["validation"] = "schema and citation locations; conclusions require human review"
         return output

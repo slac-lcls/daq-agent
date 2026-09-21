@@ -13,14 +13,22 @@ class Settings:
     partition: int
     timezone: str
     model: str
+    provider_config: str | None = None
+    opencode: str = "opencode"
+    output_root: str = "~/daq/agent-logs"
 
 
 def load_settings(path: Path) -> Settings:
     with path.open("rb") as stream:
         data = tomllib.load(stream)
     fields = {"hutch", "partition", "timezone", "model"}
-    if set(data) != fields:
-        raise ValueError("configuration must contain exactly: hutch, partition, timezone, model")
+    optional = {"provider_config", "opencode", "output_root"}
+    if not fields <= set(data) or set(data) - fields - optional:
+        raise ValueError("configuration requires hutch, partition, timezone, model; "
+                         "optional fields: provider_config, opencode, output_root")
+    for name in optional & set(data):
+        if not isinstance(data[name], str) or not data[name].strip():
+            raise ValueError(f"{name} must be a nonempty string")
     if not isinstance(data["hutch"], str) or not re.fullmatch(r"[a-z]{3}", data["hutch"]):
         raise ValueError("hutch must be a lowercase three-letter code")
     if type(data["partition"]) is not int or not 0 <= data["partition"] <= 7:

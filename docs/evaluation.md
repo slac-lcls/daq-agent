@@ -21,6 +21,11 @@ Add meaningful tests with new behavior: evidence truncation, restart identity,
 counter resets, grouping, citation validation, queue retry limits, and forbidden
 tool actions. Unit tests use fixtures, not production DAQ or paid model calls.
 
+Viewer tests cover completed-report selection across hutches, legacy layouts,
+snapshot integrity, HTML escaping, citation links, private personal settings, and
+a real loopback HTTP server with token and asset-access checks. No model calls
+are needed for report viewing or these checks.
+
 ## Agent evaluations
 
 Each case should have a fixed scope, synthetic or reviewed sanitized evidence,

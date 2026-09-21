@@ -43,6 +43,8 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
 | `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
 | `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
+| `src/daq_agent/html_reports.py` | Portable HTML reports and line-numbered evidence pages |
+| `src/daq_agent/viewer.py` | Completed-report selection, personal settings, and token-protected loopback viewer |
 | `src/daq_agent/skills/` | Application-owned reporting instructions |
 | `config/hutches/` | Non-secret hutch examples |
 | `tests/` | Deterministic software tests |

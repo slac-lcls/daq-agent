@@ -43,19 +43,37 @@ must be updated after source changes.
 Prepare without OpenCode or credentials:
 
 ```bash
-bash examples/log-analysis/run.sh --prepare-only --output artifacts/prepare-001
+bash examples/log-analysis/run.sh --prepare-only
 ```
 
 Run with the LCLS shared provider definition on SDF:
 
 ```bash
-bash examples/log-analysis/run.sh \
-  --provider-config /sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json \
-  --opencode /sdf/group/lcls/ds/dm/apps/dev/code/.opencode/bin/opencode \
-  --output artifacts/analysis-001
+bash examples/log-analysis/run.sh
 ```
 
-Choose a new output directory for each run. `--model provider/model` overrides the
+The sample TMO configuration supplies these non-secret defaults:
+
+```toml
+provider_config = "/sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json"
+opencode = "/sdf/group/lcls/ds/dm/apps/dev/code/.opencode/bin/opencode"
+output_root = "~/daq/agent-logs"
+```
+
+CLI `--provider-config` and `--opencode` take precedence over configuration.
+Older configurations without these fields still use `opencode` from PATH and
+require an explicit provider config for model execution.
+
+Without `--output`, each invocation creates a private run directory under
+`$HOME/daq/agent-logs/<hutch>/YYYY/MM/`, for example
+`tmo/2026/09/21T093000-tmo-p0-<unique-id>/`. The hutch comes from the selected
+configuration. The year/month reflect the launch date in
+the configured timezone, not the historical evidence window. `~` expands to the
+invoking user's home; change `output_root` to relocate this tree. Missing parent
+directories are created. The CLI prints the full resulting path. `--output`
+overrides this with an exact path, which must be new.
+
+`--model provider/model` overrides the
 hutch default, but that exact model must exist in the supplied provider config.
 `--timeout` defaults to 180 seconds and may be set to at most 600. A real run uses
 the model API; the regular CI workflow never does.
@@ -116,6 +134,11 @@ It contains:
 - `events.jsonl` and `runtime.stderr.log`: private runtime output for diagnosis.
 - `response.txt`: the returned model text.
 - `findings.json` and `report.md`: emitted after schema/citation checks pass.
+- `report.html` and `logs/log-N.html`: portable formatted report and linked log views.
+
+Use `daq-agent view` to browse the latest completed report, or supply this run
+directory explicitly. See [viewing reports](../viewing-reports.md) for SSH and
+NoMachine instructions. Viewing older runs does not modify their artifacts.
 
 Preparation writes the inputs and manifest but produces no findings. A failed or
 timed-out run exits nonzero and records `failed`; it does not write a success

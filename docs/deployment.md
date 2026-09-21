@@ -29,9 +29,14 @@ quotas, billing/budget, and permitted handling of operational evidence with the
 service owner. Prefer a dedicated project identity for scheduled use when
 available. Never copy shared key values into source, examples, reports, or logs.
 
-The hutch configuration contains a model identifier only. Installation does not
-access credentials or services. Explicit `analyze-logs` execution imports one
-provider/model from a supplied OpenCode JSON file, preserving an external credential
+The hutch configuration contains a model identifier, provider configuration path,
+OpenCode executable path, and output root; it contains no credentials. The TMO
+example defaults to the shared LCLS development installation on SDF. CLI flags
+can override those paths. Output defaults to the invoking user's
+`~/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>`, grouped by launch time in the
+configured timezone. Installation does not access credentials or services.
+Explicit `analyze-logs` execution imports one provider/model from the selected
+OpenCode JSON file, preserving an external credential
 reference. It does not modify the shared configuration or inherit its agents/MCP
 servers. `--prepare-only` requires neither credentials nor an OpenCode installation.
 

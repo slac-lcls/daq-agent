@@ -39,26 +39,52 @@ With the package installed and the virtual environment activated, first prepare
 the bundled **synthetic** Configure-failure example without contacting a model:
 
 ```bash
-bash examples/log-analysis/run.sh --prepare-only --output artifacts/prepare-example
+bash examples/log-analysis/run.sh --prepare-only
 ```
 
 To launch OpenCode on SDF and produce actual model findings from those same
 synthetic excerpts:
 
 ```bash
-bash examples/log-analysis/run.sh \
-  --provider-config /sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json \
-  --opencode /sdf/group/lcls/ds/dm/apps/dev/code/.opencode/bin/opencode \
-  --output artifacts/model-example
+bash examples/log-analysis/run.sh
 ```
 
-The output directory must be new. The model run uses the configured API service
+The TMO configuration supplies the shared LCLS provider and executable paths.
+Override them with `--provider-config` and `--opencode` when needed. Output defaults
+to `$HOME/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>` for the user running the
+command, using the launch date in the configured timezone. Missing directories
+are created and the resulting path is printed. Set `output_root` in the config
+to change the base directory, or `--output` to choose an exact new run directory.
+
+The model run uses the configured API service
 and may incur usage charges. It writes `report.md`, `findings.json`, and evidence/
 runtime artifacts in a private directory. Grafana is explicitly marked **not
 queried**. Do not commit or publish output from real log excerpts.
 
 See [the workflow walkthrough](docs/workflows/log-analysis.md) for what Python,
 the skill, and the example script each do, and how to supply your own excerpts.
+
+## View reports
+
+Start the viewer for your most recent completed report:
+
+```bash
+daq-agent view
+```
+
+It defaults to port 8765 and searches `~/daq/agent-logs` across hutches. It prints
+copy-paste instructions for a laptop SSH tunnel and the browser URL. For a laptop
+SSH alias that already handles your jump host, save it once:
+
+```bash
+daq-agent view --ssh-host sdfiana --save-settings
+```
+
+Use `--hutch tmo` to select a hutch, or supply a run directory explicitly.
+Citations open line-numbered logs in a new tab and highlight the cited range.
+New analyses also produce portable HTML for offline viewing. See
+[viewing reports](docs/viewing-reports.md) for NoMachine, SSH, personal settings,
+and access details. Viewing an existing report makes no model calls.
 
 ## Development
 
@@ -75,6 +101,7 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Documentation index](docs/README.md)
 - [Software architecture](docs/architecture.md)
 - [Runnable log-analysis workflow](docs/workflows/log-analysis.md)
+- [Viewing reports](docs/viewing-reports.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)
 - [Future live troubleshooting](docs/proposals/002-live-troubleshooting.md)

@@ -7,6 +7,7 @@ proposals, implementation plans, and project decisions.
 | --- | --- | --- |
 | [Architecture](architecture.md) | Boundaries, data flow, and repository organization | Design baseline |
 | [Log-analysis workflow](workflows/log-analysis.md) | Python + skill + example + validation walkthrough | Implemented prototype |
+| [Viewing reports](viewing-reports.md) | Browser reports, clickable evidence, NoMachine/SSH, and personal settings | Implemented |
 | [Skills integration](skills-integration.md) | Sources, discovery, dependency checks, versioning | Proposed integration |
 | [Reporting MVP](proposals/001-reporting-mvp.md) | First useful report and CLI contract | Proposed; planning CLI implemented |
 | [Live troubleshooting](proposals/002-live-troubleshooting.md) | Watcher and incident-driven investigations | Future proposal |
