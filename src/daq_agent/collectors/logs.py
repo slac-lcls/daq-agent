@@ -9,9 +9,10 @@ MAX_FILE_BYTES = 64 * 1024
 MAX_TOTAL_BYTES = 256 * 1024
 
 
-def snapshot_logs(paths: list[Path], destination: Path) -> list[dict]:
-    if not 1 <= len(paths) <= MAX_FILES:
-        raise ValueError(f"supply between 1 and {MAX_FILES} log excerpts")
+def snapshot_logs(paths: list[Path], destination: Path, *, max_files: int = MAX_FILES,
+                  max_total_bytes: int = MAX_TOTAL_BYTES) -> list[dict]:
+    if not 1 <= len(paths) <= max_files:
+        raise ValueError(f"supply between 1 and {max_files} log excerpts")
     records = []
     total = 0
     seen = set()
@@ -26,8 +27,8 @@ def snapshot_logs(paths: list[Path], destination: Path) -> list[dict]:
         with path.open("rb") as stream:
             content = stream.read(MAX_FILE_BYTES + 1)
         total += len(content)
-        if len(content) > MAX_FILE_BYTES or total > MAX_TOTAL_BYTES:
-            raise ValueError("log excerpts exceed the 64 KiB/file or 256 KiB/analysis limit")
+        if len(content) > MAX_FILE_BYTES or total > max_total_bytes:
+            raise ValueError(f"log excerpts exceed 64 KiB/file or {max_total_bytes // 1024} KiB total")
         text = content.decode("utf-8")
         if not text.strip() or "\x00" in text:
             raise ValueError("log inputs must be nonempty UTF-8 text")

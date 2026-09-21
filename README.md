@@ -42,7 +42,9 @@ daq-agent report --hutch tmo --last 2d
 ```
 
 This collects candidate logs for the last 48 elapsed hours, synchronizes the exact
-pinned skills if needed, and generates one draft for the entire hutch/window. The
+pinned skills if needed, and generates one draft for the entire hutch/window.
+Larger inputs are split automatically into bounded OpenCode sessions, then their
+findings are combined with citations preserved. The
 packaged TMO profile works from any directory; no interactive model selection is
 needed. To use the existing home installation without activating it:
 

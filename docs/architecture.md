@@ -10,7 +10,10 @@ an operator conversation, or a live incident trigger.
 The implementation validates configuration/time windows, collects recent shared
 TMO launch logs, and analyzes bounded counts/excerpts through OpenCode. It also
 accepts explicitly supplied excerpts through `report --log`. One hutch/window
-gets one draft with pinned upstream DAQ guidance, validated citation locations, and retained evidence.
+gets one draft with pinned upstream DAQ guidance, validated citation locations,
+and retained evidence. Larger evidence sets use multiple bounded sessions; Python
+combines their findings without a further model call. Cross-batch incident
+deduplication and causal synthesis remain future work.
 Grafana integration, incident history, and a continuous service remain future
 work. See [one-command reporting](workflows/rolling-report.md) and
 [the supplied-excerpt workflow](workflows/log-analysis.md).
@@ -41,7 +44,8 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/cli.py` | Configuration, planning, hutch reports and viewing |
 | `src/daq_agent/config.py` | Validate non-secret configuration |
 | `src/daq_agent/workflow.py` | Time-boundary validation and read-only report plans |
-| `src/daq_agent/reporting.py` | Hutch/window scope, evidence collection and one analysis |
+| `src/daq_agent/reporting.py` | Hutch/window scope, evidence collection and session selection |
+| `src/daq_agent/batches.py` | Size/count-based session planning, combined findings and citation remapping |
 | `src/daq_agent/collectors/session_logs.py` | Bounded shared-log discovery, counts, provenance, and representative contexts |
 | `src/daq_agent/profiles/` | Installed hutch defaults usable outside the checkout |
 | `src/daq_agent/artifacts.py` | Private artifact writers shared by collection and analysis |

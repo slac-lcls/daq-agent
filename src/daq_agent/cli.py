@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--provider-config", type=Path)
     report.add_argument("--opencode")
     report.add_argument("--model")
-    report.add_argument("--timeout", type=int, default=600, help="OpenCode timeout in seconds; maximum 600")
+    report.add_argument("--timeout", type=int, default=600, help="OpenCode timeout in seconds per model session; maximum 600")
     report.add_argument("--prepare-only", action="store_true", help="prepare report evidence without a model call")
     report.add_argument("--skills-cache", type=Path)
     report.add_argument("--local-skills-only", action="store_true", help="explicitly disable upstream skills")

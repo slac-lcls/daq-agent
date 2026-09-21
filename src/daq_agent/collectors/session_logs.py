@@ -20,7 +20,6 @@ MAX_DISCOVERED = 20000
 MAX_SELECTED = 2000
 MAX_SCAN_FILE = 32 * 1024 * 1024
 MAX_SCAN_TOTAL = 512 * 1024 * 1024
-MAX_LAUNCHES = 7
 MAX_DOCUMENT = 35000
 NAME = re.compile(r"(\d{2}_\d{2}:\d{2}:\d{2})_.+\.log(?:\.zst)?$")
 STAMP = re.compile(r"^(\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d)(?:[.,]\d+)?(Z|[+-]\d\d:\d\d)?")
@@ -159,8 +158,6 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
         raise ValueError("log root must be a directory")
     zone = ZoneInfo(timezone_name)
     selected = discover(root, start, end, zone)
-    if len(selected) > MAX_LAUNCHES:
-        raise ValueError("more than seven launch groups in the hutch/window; narrow --last or use report --log")
     target.mkdir(mode=0o700, parents=True, exist_ok=False)
     groups, records, total = {}, [], 0
     for launch, paths in selected.items():
@@ -280,8 +277,8 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
         out.append(f"Stored example blocks omitted for input budget: {omitted}. Sampling retains at most four signatures per category/time bucket; other matching lines are counted but not supplied.")
         documents.append((f"{index:02d}-launch.log", "\n".join(out) + "\n"))
     sizes = [len(text.encode()) for _, text in documents]
-    if len(sizes) > 8 or max(sizes) > 65536 or sum(sizes) > 262144:
-        raise ValueError("collection exceeds model input budget; narrow --last")
+    if max(sizes) > 65536:
+        raise ValueError("a collection document exceeds 64 KiB; narrow the window or supply scoped excerpts")
     result = []
     for name, text in documents:
         path = folder / name

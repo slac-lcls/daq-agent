@@ -8,6 +8,7 @@ import shutil
 import sys
 import tempfile
 
+from .batches import analyze_batches, plan_batches
 from .collectors.session_logs import collect_logs
 from .config import load_settings
 from .log_analysis import analyze_logs
@@ -56,7 +57,7 @@ def report_window(last, start, end, timezone_name, *, now=None):
 
 def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=False,
                     prepare_only=False, local_skills_only=False, skills_cache=None, timeout=600):
-    """Collect evidence once, then run a single hutch-wide OpenCode analysis."""
+    """Collect evidence once and produce one report using bounded model sessions."""
     if logs is None and not settings.log_root:
         raise ValueError("set log_root in the hutch configuration or pass --log-root")
     if synthetic and logs is None:
@@ -82,10 +83,14 @@ def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=
             print(f"Collecting {settings.hutch} logs for {start.isoformat()} to {end.isoformat()}...", file=sys.stderr, flush=True)
             collected = Path(directory) / "inputs"
             logs = collect_logs(Path(settings.log_root), collected, settings.hutch, start, end, settings.timezone)
+        batches = plan_batches(logs, shared_scope=collected is not None)
         action = "Preparing" if prepare_only else "Analyzing"
-        print(f"{action} one {settings.hutch} report ({len(logs)} evidence documents)...", file=sys.stderr, flush=True)
-        analyze_logs(settings, start.isoformat(), end.isoformat(), logs, output, provider,
-                     str(Path(settings.opencode).expanduser()), timeout, prepare_only, synthetic,
-                     skills_cache=skills_cache, local_skills_only=local_skills_only,
-                     collected_inputs=collected)
+        session_label = "session" if len(batches) == 1 else "sessions"
+        print(f"{action} one {settings.hutch} report ({len(logs)} evidence documents; {len(batches)} model {session_label})...", file=sys.stderr, flush=True)
+        analyzer = analyze_logs if len(batches) == 1 else analyze_batches
+        options = {} if len(batches) == 1 else {"batches": batches}
+        analyzer(settings, start.isoformat(), end.isoformat(), logs, output, provider,
+                 str(Path(settings.opencode).expanduser()), timeout, prepare_only, synthetic,
+                 skills_cache=skills_cache, local_skills_only=local_skills_only,
+                 collected_inputs=collected, **options)
     return {"status": "prepared_only" if prepare_only else "completed", "output": str(output)}

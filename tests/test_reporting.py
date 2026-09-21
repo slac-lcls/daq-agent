@@ -105,14 +105,14 @@ class ReportingTests(unittest.TestCase):
         self.assertIn(str(other), inputs[1].read_text())
         self.assertIn(str(missing), inputs[1].read_text())
 
-    def test_excess_launches_fail_before_reading_file_contents(self):
+    def test_collection_includes_more_than_seven_launches(self):
         for hour in range(8):
             self.log(f"2026/09/01_{hour:02}:00:00_node:control.log")
-        with patch("daq_agent.collectors.session_logs.capture") as capture:
-            with self.assertRaisesRegex(ValueError, "seven launch groups"):
-                self.collect()
-            capture.assert_not_called()
-        self.assertFalse((self.root / "inputs").exists())
+        inputs = self.collect()
+        self.assertEqual(len(inputs), 9)
+        inventory = json.loads((self.root / "inputs/collection.json").read_text())
+        self.assertEqual(len(inventory["files"]), 8)
+        self.assertIn("2026/09/01_07:00:00", inputs[-1].read_text())
 
     def test_compressed_and_oversized_candidates_fail(self):
         path = self.log(name="2026/09/01_00:00:00_node:control.log.zst")
