@@ -1,7 +1,6 @@
-# Non-secret prototype settings. Confirm partition before a real investigation.
+# Non-secret hutch-wide reporting settings.
 # This is a proposed report configuration, not a statement of current DAQ state.
 hutch = "tmo"
-partition = 0
 timezone = "America/Los_Angeles"
 model = "slac/us.anthropic.claude-sonnet-5"
 

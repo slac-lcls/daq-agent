@@ -59,16 +59,15 @@ class BatchReportTests(unittest.TestCase):
         self.log("2026/09/02_10:00:00_node:other.log", partition=6)
         self.log("2026/09/04_10:00:00_node:future.log")
         inputs = self.collect()
-        self.assertEqual(set(inputs), {0, 6})
-        self.assertEqual([len(paths) for paths in inputs.values()], [2, 2])
+        self.assertEqual(len(inputs), 3)
         metadata = json.loads((self.root / "inputs/collection.json").read_text())
         self.assertEqual(len(metadata["files"]), 2)
         record = next(r for r in metadata["files"] if r["partition"] == 0)
         self.assertEqual(record["sha256"], hashlib.sha256(previous.read_bytes()).hexdigest())
         self.assertEqual(record["matches"]["error|outside_if_local"], 1)
-        self.assertIn("2026/08/31", inputs[0][1].read_text())
-        self.assertNotIn("partition 6", inputs[0][1].read_text())
-        self.assertEqual(inputs[0][1].stat().st_mode & 0o777, 0o600)
+        self.assertIn("2026/08/31", inputs[1].read_text())
+        self.assertNotIn("partition 6", inputs[1].read_text())
+        self.assertEqual(inputs[1].stat().st_mode & 0o777, 0o600)
 
     def test_traceback_end_memory_errors_counts_and_secret_masking(self):
         body = ("fatal: detected dubious ownership\n"
@@ -81,7 +80,7 @@ class BatchReportTests(unittest.TestCase):
                 "Inbound  link with DRP ID 3 configured in 1500 ms\n")
         self.log(body=body)
         inputs = self.collect()
-        document = inputs[0][1].read_text()
+        document = inputs[1].read_text()
         self.assertIn("UnicodeEncodeError: synthetic exception terminator", document)
         self.assertNotIn("synthetic-sensitive-value", document)
         self.assertIn("[REDACTED sensitive field]", document)
@@ -91,10 +90,18 @@ class BatchReportTests(unittest.TestCase):
         self.assertEqual(record["matches"]["memory_error|untimed_or_unparsed"], 1)
         self.assertEqual(record["matches"]["slow_link_config|untimed_or_unparsed"], 1)
 
-    def test_unknown_partition_fails_without_assigning_default(self):
+    def test_missing_and_unknown_platform_preserved_without_excluding_logs(self):
         self.log(partition="unknown")
-        with self.assertRaisesRegex(ValueError, "PLATFORM"):
-            self.collect()
+        other = self.log("2026/09/01_00:00:00_node:other.log", partition=6)
+        missing = self.log("2026/09/01_00:00:00_node:missing.log")
+        missing.write_text("ERROR no headers\n")
+        inputs = self.collect()
+        self.assertEqual(len(inputs), 2)
+        metadata = json.loads((self.root / "inputs/collection.json").read_text())
+        self.assertEqual(len(metadata["files"]), 3)
+        self.assertEqual([r["partition"] for r in metadata["files"]], [None, None, 6])
+        self.assertIn(str(other), inputs[1].read_text())
+        self.assertIn(str(missing), inputs[1].read_text())
 
     def test_compressed_and_oversized_candidates_fail(self):
         path = self.log(name="2026/09/01_00:00:00_node:control.log.zst")
@@ -112,47 +119,76 @@ class BatchReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-symlink"):
             self.collect()
 
-    def test_missing_requested_partition_fails(self):
+    def test_separate_launches_with_same_platform_are_both_included(self):
         self.log()
-        with self.assertRaisesRegex(ValueError, "requested partition"):
-            self.collect(partitions=[0, 6])
+        self.log("2026/09/02_00:00:00_node:control.log")
+        inputs = self.collect()
+        self.assertEqual(len(inputs), 3)
+        self.assertIn("2026/09/01_00:00:00", inputs[1].read_text())
+        self.assertIn("2026/09/02_00:00:00", inputs[2].read_text())
 
     def test_ambiguous_bare_timestamp_is_not_assigned_to_window(self):
         value = time_bucket("2026-11-01 01:30:00 ERROR", self.start, self.end,
                             ZoneInfo("America/Los_Angeles"))
         self.assertEqual(value, "untimed_or_unparsed")
 
-    def test_prepare_creates_partition_runs_and_preserves_existing_output(self):
+    def test_prepare_creates_one_hutch_report_and_preserves_existing_output(self):
         self.log()
         self.log("2026/09/02_00:00:00_node:other.log", partition=6)
-        output = self.root / "batch"
+        output = self.root / "report"
         result = generate_report(self.settings, self.start, self.end, output, prepare_only=True)
         self.assertEqual(result["status"], "prepared_only")
-        self.assertEqual([r["partition"] for r in result["reports"]], [6, 0])
-        for partition in (0, 6):
-            manifest = json.loads((output / f"partition-{partition}/manifest.json").read_text())
-            self.assertEqual(manifest["settings"]["partition"], partition)
-            self.assertEqual(manifest["status"], "prepared_only")
-        before = (output / "batch.json").read_bytes()
+        manifest = json.loads((output / "manifest.json").read_text())
+        self.assertIsNone(manifest["settings"]["partition"])
+        self.assertEqual(manifest["scope"], {"kind": "hutch"})
+        self.assertEqual(len(manifest["sources"]), 3)
+        self.assertEqual(manifest["status"], "prepared_only")
+        collection = json.loads((output / manifest["collection"]).read_text())
+        self.assertEqual({r["partition"] for r in collection["files"]}, {0, 6})
+        for source in manifest["sources"]:
+            self.assertTrue(Path(source["original_path"]).is_file())
+        self.assertFalse(list(output.glob("partition-*")))
+        before = (output / "manifest.json").read_bytes()
         with self.assertRaises(FileExistsError):
             generate_report(self.settings, self.start, self.end, output, prepare_only=True)
-        self.assertEqual(before, (output / "batch.json").read_bytes())
+        self.assertEqual(before, (output / "manifest.json").read_bytes())
 
-    def test_failed_partition_retains_other_results_and_batch_fails(self):
+    def fake_settings(self):
+        import test_log_analysis as fixtures
+        fixture = fixtures.LogAnalysisTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        fixture.fake_runtime()
+        return replace(self.settings, model=fixture.settings.model,
+                       provider_config=str(fixture.provider), opencode=str(fixture.root / "fake-opencode"))
+
+    def test_one_analysis_reads_all_launches_and_renders_hutch_report(self):
         self.log()
         self.log("2026/09/02_00:00:00_node:other.log", partition=6)
-        output = self.root / "batch"
+        output = self.root / "reports/tmo/2026/09/example-report"
         from daq_agent.log_analysis import analyze_logs
-        def analyze(settings, *args, **kwargs):
-            if settings.partition == 6:
-                raise ValueError("synthetic failure")
-            return analyze_logs(settings, *args, **kwargs)
-        with patch("daq_agent.batch_report.analyze_logs", side_effect=analyze):
-            with self.assertRaisesRegex(ValueError, "partition analyses failed"):
-                generate_report(self.settings, self.start, self.end, output, prepare_only=True)
-        batch = json.loads((output / "batch.json").read_text())
-        self.assertEqual(batch["status"], "failed")
-        self.assertEqual([r["status"] for r in batch["reports"]], ["failed", "prepared_only"])
+        with patch("daq_agent.batch_report.analyze_logs", wraps=analyze_logs) as analyze:
+            result = generate_report(self.fake_settings(), self.start, self.end, output)
+        self.assertEqual(analyze.call_count, 1)
+        self.assertEqual(result["status"], "completed")
+        manifest = json.loads((output / "manifest.json").read_text())
+        self.assertEqual(manifest["runtime_audit"]["sources_read"], ["log-1", "log-2", "log-3"])
+        for name in ("report.md", "report.html"):
+            text = (output / name).read_text()
+            self.assertIn("scope: hutch and time window", text)
+            self.assertNotIn("partition: None", text)
+        self.assertEqual(latest_report(self.root / "reports", "tmo").directory, output)
+
+    def test_failed_analysis_retains_collection_and_failed_manifest(self):
+        self.log()
+        output = self.root / "report"
+        with patch("daq_agent.log_analysis.run_opencode", side_effect=ValueError("synthetic failure")):
+            with self.assertRaisesRegex(ValueError, "synthetic failure"):
+                generate_report(self.fake_settings(), self.start, self.end, output)
+        manifest = json.loads((output / "manifest.json").read_text())
+        self.assertEqual(manifest["status"], "failed")
+        self.assertTrue((output / manifest["collection"]).is_file())
+        self.assertFalse((output / "report.html").exists())
 
     def test_packaged_profile_cli_prepares_without_credentials_or_checkout(self):
         self.log()
@@ -170,17 +206,18 @@ class BatchReportTests(unittest.TestCase):
         self.assertEqual((repository / "src/daq_agent/profiles/tmo.toml").read_text(),
                          (repository / "config/hutches/tmo.toml").read_text())
 
-    def test_viewer_discovers_nested_batch_report(self):
-        self.log()
-        output = self.root / "reports/tmo/2026/09/example-report"
-        generate_report(self.settings, self.start, self.end, output, prepare_only=True)
-        run = output / "partition-0"
-        manifest = json.loads((run / "manifest.json").read_text())
-        manifest.update(status="completed", completed_at=self.end.isoformat())
-        (run / "manifest.json").write_text(json.dumps(manifest))
-        (run / "findings.json").write_text(json.dumps({"summary": "Synthetic test", "findings": [], "limitations": ["Synthetic test only"]}))
-        report = latest_report(self.root / "reports", "tmo")
-        self.assertEqual(report.directory, run)
+    def test_cli_has_one_reporting_command_and_no_partition_filter(self):
+        stream = io.StringIO()
+        with redirect_stdout(stream), self.assertRaises(SystemExit) as raised:
+            main(["--help"])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("report", stream.getvalue())
+        self.assertNotIn("analyze-logs", stream.getvalue())
+        stream = io.StringIO()
+        with redirect_stdout(stream), self.assertRaises(SystemExit):
+            main(["report", "--help"])
+        self.assertNotIn("--partition", stream.getvalue())
+
 
 
 if __name__ == "__main__":

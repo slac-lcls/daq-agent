@@ -14,9 +14,9 @@ python -m pip install -e .
 daq-agent sync-skills --config config/hutches/tmo.toml
 ```
 
-The TMO configuration selects partition 0, the SLAC provider, and the pinned
-`psana-daq`/`psana-daq-logs` skills. Confirm the partition against the log headers
-before analyzing a different launch. Skill synchronization does not require model
+The TMO configuration selects the SLAC provider and pinned
+`psana-daq`/`psana-daq-logs` skills. Platform values in headers are retained as
+source metadata. The report covers the hutch and supplied time window. Skill synchronization does not require model
 credentials. A real analysis uses the configured model service.
 
 ## Select evidence from one launch
@@ -40,7 +40,7 @@ prefix, and any omissions/redactions. Keep useful header and surrounding context
 Never concatenate separated ranges without marking the gap. A head/tail sample
 is a smoke test, not a complete incident search or operating-window survey.
 
-`analyze-logs` does not automatically truncate, decompress, redact, or time-filter
+`report --log` does not automatically truncate, decompress, redact, or time-filter
 its supplied inputs. Review selected inputs for credentials before sending them to the configured
 service. Rotated `.zst` files need explicit decompression and scoping first.
 Citations refer to the retained excerpt's line numbers; preserve the original-line
@@ -52,7 +52,7 @@ Replace the dates and paths with the chosen launch and excerpts. Supply an expli
 end time; a launch timestamp alone does not timestamp all component messages.
 
 ```bash
-daq-agent analyze-logs --config config/hutches/tmo.toml \
+daq-agent report --hutch tmo --config config/hutches/tmo.toml \
   --from 2026-09-20T19:05:09-07:00 --to 2026-09-21T12:00:00-07:00 \
   --log /path/to/private/control-excerpt.log \
   --log /path/to/private/teb0-excerpt.log \

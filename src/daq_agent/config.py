@@ -12,7 +12,7 @@ from .skill_sources import SkillSource, parse_source
 @dataclass(frozen=True)
 class Settings:
     hutch: str
-    partition: int
+    partition: int | None
     timezone: str
     model: str
     provider_config: str | None = None
@@ -25,18 +25,19 @@ class Settings:
 def load_settings(path: Path) -> Settings:
     with path.open("rb") as stream:
         data = tomllib.load(stream)
-    fields = {"hutch", "partition", "timezone", "model"}
+    fields = {"hutch", "timezone", "model"}
     optional = {"provider_config", "opencode", "output_root", "log_root"}
-    if not fields <= set(data) or set(data) - fields - optional - {"daq_skills"}:
-        raise ValueError("configuration requires hutch, partition, timezone, model; "
-                         "optional fields: provider_config, opencode, output_root, log_root, daq_skills")
+    if not fields <= set(data) or set(data) - fields - optional - {"daq_skills", "partition"}:
+        raise ValueError("configuration requires hutch, timezone, model; "
+                         "optional fields: provider_config, opencode, output_root, log_root, daq_skills, legacy partition")
     for name in optional & set(data):
         if not isinstance(data[name], str) or not data[name].strip():
             raise ValueError(f"{name} must be a nonempty string")
     if not isinstance(data["hutch"], str) or not re.fullmatch(r"[a-z]{3}", data["hutch"]):
         raise ValueError("hutch must be a lowercase three-letter code")
-    if type(data["partition"]) is not int or not 0 <= data["partition"] <= 7:
+    if "partition" in data and (type(data["partition"]) is not int or not 0 <= data["partition"] <= 7):
         raise ValueError("partition must be an integer from 0 to 7")
+    data.setdefault("partition", None)
     if not isinstance(data["timezone"], str):
         raise ValueError("timezone must be an IANA timezone name")
     try:

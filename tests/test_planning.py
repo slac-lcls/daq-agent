@@ -54,6 +54,8 @@ class PlanningTests(unittest.TestCase):
             path = Path(directory) / "settings.toml"
             path.write_text(valid)
             self.assertEqual(load_settings(path), self.settings)
+            path.write_text(valid.replace("partition=0\n", ""))
+            self.assertIsNone(load_settings(path).partition)
             for content in invalid:
                 path.write_text(content)
                 with self.subTest(content=content), self.assertRaises(ValueError):

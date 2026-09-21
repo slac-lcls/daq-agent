@@ -1,6 +1,6 @@
 ---
 name: robustness-report
-description: Draft a historical LCLS DAQ and AMI robustness report for a specified hutch, partition, and operating window, grouping recurring incidents and citing evidence for expert review.
+description: Draft a historical LCLS DAQ and AMI robustness report for a specified hutch and operating window, grouping recurring incidents and citing evidence for expert review.
 ---
 
 # Robustness report
@@ -11,12 +11,14 @@ skills. Skill installation alone does not establish source access.
 
 ## Establish scope and coverage
 
-- Use the supplied hutch, partition, timezone, and inclusive-start/exclusive-end
+- Use the supplied hutch, timezone, and inclusive-start/exclusive-end
   window. Do not switch to whichever hutch currently has metrics.
 - Establish historical operating periods, expected components, and coverage from
   evidence. Current status cannot prove historical state. Never substitute a
   diagnostic skill's default `now` query for the requested window.
-- Preserve launch/session identity across restarts and partition boundaries.
+- Produce one report across the hutch/window. Platform is source metadata, not
+  a reporting group. Preserve explicit run references and launch/session identity;
+  a launch may contain several numbered data-taking runs.
   Record deployed release information when interpreting source-code behavior.
 - Distinguish idle periods, observed healthy operation, and unavailable evidence.
   Untimestamped logs may support session-level attribution only; say so.

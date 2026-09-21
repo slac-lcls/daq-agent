@@ -101,7 +101,7 @@ def read_manifest(directory: Path) -> dict:
     manifest = json.loads(read_artifact(directory, "manifest.json", 128 * 1024))
     if not isinstance(manifest, dict) or manifest.get("status") != "completed":
         raise ValueError("run is not a completed report")
-    if manifest.get("workflow") != "analyze-logs" or manifest.get("schema_version") != 1:
+    if manifest.get("workflow") not in {"analyze-logs", "report"} or manifest.get("schema_version") != 1:
         raise ValueError("unsupported report workflow or schema")
     return manifest
 
@@ -124,7 +124,11 @@ def load_report(directory: Path) -> Report:
         settings = manifest["settings"]
         if not re.fullmatch(r"[a-z]{3}", settings["hutch"]):
             raise ValueError("invalid report hutch")
-        if type(settings["partition"]) is not int or not 0 <= settings["partition"] <= 7:
+        partition = settings.get("partition")
+        if partition is None:
+            if manifest.get("scope") != {"kind": "hutch"}:
+                raise ValueError("report without a partition must explicitly declare hutch scope")
+        elif type(partition) is not int or not 0 <= partition <= 7:
             raise ValueError("invalid report partition")
         for value in (settings["model"], manifest["created_at"], manifest["evidence_kind"],
                       manifest["window"]["start_inclusive"], manifest["window"]["end_exclusive"]):
@@ -180,7 +184,7 @@ def latest_report(root: Path, hutch: str | None = None) -> Report:
             return load_report(directory)
         except (OSError, ValueError):
             continue
-    raise ValueError(f"no valid completed reports found under {root}; run analyze-logs first "
+    raise ValueError(f"no valid completed reports found under {root}; run report first "
                      "or supply an explicit run directory")
 
 

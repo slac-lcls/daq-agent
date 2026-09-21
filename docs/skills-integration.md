@@ -1,8 +1,8 @@
 # Pinned DAQ skill integration
 
-Status: implemented for supplied-log analysis. `analyze-logs` loads the packaged
+Status: implemented for automatic and supplied-log reporting. `report` loads the packaged
 `log-triage` reporting instructions and the selected upstream DAQ skills. It
-requires an explicit synchronization first; analysis never fetches a branch tip.
+verifies or synchronizes the exact pinned revision first; it never follows a branch tip.
 
 ## Temporary upstream source
 
@@ -89,9 +89,9 @@ wall-clock/output limits. These are application permissions, not an OS sandbox.
 ## Real TMO logs
 
 See [the TMO walkthrough](workflows/tmo-logs.md) for scoped input preparation and
-invocation. This release supports analysis of readable, supplied excerpts. It does
-not yet implement automatic session collection, multi-file time filtering,
-continuous monitoring, or DAQ operations.
+invocation. [Hutch-wide reporting](workflows/rolling-report.md) collects shared
+log sessions automatically. Continuous monitoring and DAQ operations remain
+future work.
 
 ## Future source and capability changes
 
@@ -102,12 +102,13 @@ its tools, host routes, or credentials work.
 
 Add live tools individually with explicit scope and read-only boundaries before
 enabling the corresponding skills. Historical tasks must continue to supply
-hutch, partition, launch identity, release where known, and an explicit window.
+hutch and an explicit window, with run/launch, platform and release metadata
+where known. Platform is not a reporting boundary.
 The source configuration can later point at a merged branch or a dedicated skill
 repository. AMI's package-discovery approach remains another future source adapter.
 
 `daq-agent report --hutch tmo --last 2d` performs pinned synchronization before
 collection and analysis, reusing a verified cache when available. The collector
 is application code; it does not execute upstream scripts or give the model
-access to the shared source log tree. Each partition analysis loads and audits
-the same selected skills as `analyze-logs`.
+access to the shared source log tree. One OpenCode analysis loads and audits
+the selected skills across all prepared hutch/window evidence.

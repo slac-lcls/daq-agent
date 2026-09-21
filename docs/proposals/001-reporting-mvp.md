@@ -30,18 +30,18 @@ daq-agent chat --hutch tmo --model slac/us.anthropic.claude-fable-5-1
 ```
 
 `report` runs without a terminal conversation and returns draft reports and
-artifact locations per discovered partition. Packaged TMO defaults resolve the
+one artifact directory for the hutch/window. Packaged TMO defaults resolve the
 shared log source and pinned skills. `chat` remains proposed: it should prepare
 the same skills/tools and open OpenCode with a selected model.
 
 Dates are local midnight in a named timezone. Timestamps require explicit offsets.
 Interpret intervals as inclusive start, exclusive end, and persist UTC instants.
-`report` reads partition headers; `analyze-logs` uses the explicitly configured
-partition. A sample configuration value is not live discovery.
+`report` retains platform headers as source metadata. Neither platform values
+nor a legacy partition configuration field divide reporting scope.
 
 ## Report contract
 
-- Scope and coverage: hutch, partition, operating exposure, sessions/releases,
+- Scope and coverage: hutch/window, operating exposure, run/session/release metadata,
   source availability, query bounds, and missing/truncated evidence.
 - Ranked incident families: distinct occurrences, affected components/runs,
   measured impact or an explicit unknown, and comparison with a prior window.

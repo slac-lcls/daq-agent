@@ -47,7 +47,7 @@ def render_report(result: dict, manifest: dict) -> str:
     settings = manifest["settings"]
     lines = [
         "# DAQ log analysis — draft", "",
-        f"Hutch: {settings['hutch']}; partition: {settings['partition']}",
+        f"Hutch: {settings['hutch']}; " + ("scope: hutch and time window" if settings.get("partition") is None else f"partition: {settings['partition']}"),
         f"Window: [{manifest['window']['start_inclusive']}, {manifest['window']['end_exclusive']})", "",
         f"Evidence kind: **{manifest['evidence_kind']}**. Only supplied excerpts were analyzed.",
         "Grafana: **not queried — integration unavailable in this workflow**.",

@@ -5,9 +5,9 @@ an evidence-backed TMO robustness report covering an explicit historical window,
 for review by the hutch robustness monitor and the DAQ group.
 
 **Status: runnable reporting prototype.** `report` collects recent shared TMO
-logs and runs OpenCode with pinned DAQ skills to produce separate partition
-drafts. `analyze-logs` accepts explicitly supplied excerpts. Both save cited
-findings, Markdown, and HTML. Grafana queries, interactive diagnosis, and
+logs and runs OpenCode with pinned DAQ skills to produce one report for the
+hutch and time window. Optional `report --log` accepts supplied excerpts.
+Reports contain cited findings, Markdown, and HTML. Grafana queries, interactive diagnosis, and
 continuous monitoring remain unimplemented. `--prepare-only` makes no model calls.
 
 ## Quick start
@@ -42,7 +42,7 @@ daq-agent report --hutch tmo --last 2d
 ```
 
 This collects candidate logs for the last 48 elapsed hours, synchronizes the exact
-pinned skills if needed, and generates one draft per discovered partition. The
+pinned skills if needed, and generates one draft for the entire hutch/window. The
 packaged TMO profile works from any directory; no interactive model selection is
 needed. To use the existing home installation without activating it:
 
@@ -51,11 +51,15 @@ needed. To use the existing home installation without activating it:
 ```
 
 Reports are saved under `~/daq/agent-logs/tmo/YYYY/MM/<unique-run>-report/`.
-Use `daq-agent view --hutch tmo` to open the latest completed partition report.
+Use `daq-agent view --hutch tmo` to open the latest completed hutch report.
 Add `--prepare-only` to collect inputs without calling the model. These are
 AI drafts requiring review, not automatically verified incident reports. See
 [one-command reporting](docs/workflows/rolling-report.md) for collection bounds,
-time assumptions, partition selection, and override options.
+time assumptions and override options.
+
+Platform values remain source metadata and do not split reports. The earlier
+`analyze-logs` subcommand is replaced by optional `report --log` input selection;
+the normal command above collects logs automatically.
 
 ## Run the example workflow
 
@@ -77,7 +81,7 @@ bash examples/log-analysis/run.sh
 
 The TMO configuration supplies the shared LCLS provider/executable paths and
 pins Seshu's DAQ routing/log skills. `sync-skills` needs Git and HTTPS access;
-analysis then uses the verified cache without fetching updates. For a packaged-skill
+reporting verifies or synchronizes that exact revision before analysis. For a packaged-skill
 example without upstream access, pass `--local-skills-only` explicitly.
 
 The TMO configuration supplies the shared LCLS provider and executable paths.

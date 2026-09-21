@@ -7,7 +7,7 @@ proposals, implementation plans, and project decisions.
 | --- | --- | --- |
 | [Architecture](architecture.md) | Boundaries, data flow, and repository organization | Design baseline |
 | [Log-analysis workflow](workflows/log-analysis.md) | Python + skill + example + validation walkthrough | Implemented prototype |
-| [One-command reporting](workflows/rolling-report.md) | Collect rolling-window shared logs and analyze partitions | Implemented prototype |
+| [One-command reporting](workflows/rolling-report.md) | Collect shared logs and produce one hutch/window report | Implemented prototype |
 | [Real TMO logs](workflows/tmo-logs.md) | Scoped input preparation and pinned-skill analysis | Manual workflow |
 | [Viewing reports](viewing-reports.md) | Browser reports, clickable evidence, NoMachine/SSH, and personal settings | Implemented |
 | [Skills integration](skills-integration.md) | Pinned source, explicit synchronization, runtime loading | Implemented for supplied and collected excerpts |
@@ -26,5 +26,5 @@ and repository license. Public visibility does not grant a software license;
 choose one with the maintainers before treating this as a reusable release.
 
 The CLI's `--help` and the root README are authoritative about what executes
-today. `report` collects shared logs; `analyze-logs` operates on supplied excerpts.
+today. `report` collects shared logs; `report --log` accepts supplied excerpts.
 `chat`, `watch`, and the full incident-report contract remain proposals.

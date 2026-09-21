@@ -2,13 +2,14 @@
 
 Status: implemented prototype. This is an application workflow, with a separate
 credential-free CI test. It can launch real OpenCode and produce model findings;
-it does not yet discover logs on DAQ hosts or query Grafana.
+this supplied-file mode bypasses discovery. Automatic shared-log collection is
+available through `report` without `--log`; Grafana is unavailable.
 
 ## The pieces added to the repository
 
 | Piece | File | Responsibility |
 | --- | --- | --- |
-| Command | `src/daq_agent/cli.py` | Parse `analyze-logs` arguments |
+| Command | `src/daq_agent/cli.py` | Parse `report --log` arguments |
 | Python workflow | `src/daq_agent/log_analysis.py` | Coordinate inputs, skill, runtime, and outputs |
 | Collector | `src/daq_agent/collectors/logs.py` | Copy bounded log excerpts and record hashes/line counts |
 | Runtime adapter | `src/daq_agent/runtime.py` | Launch restricted OpenCode and handle timeout/failure |
@@ -25,7 +26,7 @@ need a new shell script unless it makes a concrete example easier to run.
 
 ```mermaid
 flowchart LR
-    CLI[analyze-logs] --> Snapshot[Python snapshots supplied excerpts]
+    CLI[report with supplied logs] --> Snapshot[Python snapshots supplied excerpts]
     Snapshot --> Session[Private OpenCode session]
     Skill[log-triage skill] --> Session
     Session --> Read[Model reads snapshot files]
@@ -71,7 +72,7 @@ require an explicit provider config for model execution.
 
 Without `--output`, each invocation creates a private run directory under
 `$HOME/daq/agent-logs/<hutch>/YYYY/MM/`, for example
-`tmo/2026/09/21T093000-tmo-p0-<unique-id>/`. The hutch comes from the selected
+`tmo/2026/09/21T093000-tmo-<unique-id>-report/`. The hutch comes from the selected
 configuration. The year/month reflect the launch date in
 the configured timezone, not the historical evidence window. `~` expands to the
 invoking user's home; change `output_root` to relocate this tree. Missing parent
@@ -80,13 +81,13 @@ overrides this with an exact path, which must be new.
 
 `--model provider/model` overrides the
 hutch default, but that exact model must exist in the supplied provider config.
-`--timeout` defaults to 180 seconds and may be set to at most 600. A real run uses
+`--timeout` defaults to 600 seconds and may be set to at most 600. A real run uses
 the model API; the regular CI workflow never does.
 
 ## Supply your own excerpts
 
 ```bash
-daq-agent analyze-logs --config config/hutches/tmo.toml \
+daq-agent report --hutch tmo --config config/hutches/tmo.toml \
   --from 2026-09-18T10:00:00-07:00 --to 2026-09-18T10:05:00-07:00 \
   --log /path/to/control-excerpt.log --log /path/to/teb-excerpt.log \
   --provider-config /path/to/opencode-provider.json \
