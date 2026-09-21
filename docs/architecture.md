@@ -7,10 +7,11 @@ recurring problems, and producing reviewable findings. TMO is the first hutch.
 The same investigation should eventually be callable from a scheduled report,
 an operator conversation, or a live incident trigger.
 
-The scaffold implements configuration validation and report planning only.
-There is no OpenCode launch, evidence access, database, report generation, or
-continuous service yet. Keeping those boundaries explicit avoids mistaking a
-successful planning command for an operational diagnostic result.
+The implementation validates configuration/time windows and can analyze explicitly
+supplied log excerpts through OpenCode. It snapshots bounded inputs, loads a local
+skill, validates returned citation locations, and writes a draft report. There is
+no automatic historical collection, Grafana integration, incident database, or
+continuous service yet. See [the runnable workflow](workflows/log-analysis.md).
 
 ## Proposed flow
 
@@ -35,9 +36,13 @@ An available skill is not evidence that its tools are installed or reachable.
 
 | Location | Responsibility |
 | --- | --- |
-| `src/daq_agent/cli.py` | User entry points; implemented configuration/planning commands |
+| `src/daq_agent/cli.py` | Configuration, planning, and log-analysis commands |
 | `src/daq_agent/config.py` | Validate non-secret configuration |
 | `src/daq_agent/workflow.py` | Explicit time-window planning; future workflow coordination |
+| `src/daq_agent/log_analysis.py` | Compose snapshot collection, skill, model run, and outputs |
+| `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
+| `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
+| `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
 | `src/daq_agent/skills/` | Application-owned reporting instructions |
 | `config/hutches/` | Non-secret hutch examples |
 | `tests/` | Deterministic software tests |
@@ -45,11 +50,9 @@ An available skill is not evidence that its tools are installed or reachable.
 | `docs/` | Architecture, proposals, plans, and decisions |
 | `deploy/` | Deployment contracts and future service templates |
 
-As implemented capabilities arrive, introduce `runtime.py` for OpenCode
-integration, `tools/` and `collectors/` for bounded evidence access,
-`investigations/` for reusable diagnostic workflows, `incidents.py` for incident
-records, `reports.py` for validation/rendering, and `triggers/` for live events.
-These are planned boundaries, not empty modules that claim functionality.
+Future additions include `tools/` for service access, `investigations/` for shared
+diagnostic workflows, `incidents.py` for persistent incident records, and
+`triggers/` for live events. These remain planned boundaries.
 
 ## Evidence and incident identity
 

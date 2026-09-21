@@ -6,6 +6,7 @@ proposals, implementation plans, and project decisions.
 | Document | Purpose | Status |
 | --- | --- | --- |
 | [Architecture](architecture.md) | Boundaries, data flow, and repository organization | Design baseline |
+| [Log-analysis workflow](workflows/log-analysis.md) | Python + skill + example + validation walkthrough | Implemented prototype |
 | [Skills integration](skills-integration.md) | Sources, discovery, dependency checks, versioning | Proposed integration |
 | [Reporting MVP](proposals/001-reporting-mvp.md) | First useful report and CLI contract | Proposed; planning CLI implemented |
 | [Live troubleshooting](proposals/002-live-troubleshooting.md) | Watcher and incident-driven investigations | Future proposal |
@@ -22,4 +23,5 @@ and repository license. Public visibility does not grant a software license;
 choose one with the maintainers before treating this as a reusable release.
 
 The CLI's `--help` and the root README are authoritative about what executes
-today. Documents describing `report`, `chat`, or `watch` are proposals.
+today. `analyze-logs` operates on supplied excerpts; the full `report`, `chat`,
+and `watch` interfaces remain proposals.

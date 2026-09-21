@@ -7,6 +7,16 @@ Run `python -m unittest discover -s tests -v`. Initial tests cover time windows
 configuration validation, honest plan status, and packaged skill resources.
 CI builds and installs the wheel before running tests on Python 3.11 and 3.13.
 
+The log-analysis tests exercise a fake OpenCode subprocess through the real
+orchestration path, including failed citations, timeout handling, credential
+reference validation, restricted session configuration, and output preservation.
+CI also prepares the example without a model call. A successful fake-runtime test
+does not establish actual model or gateway compatibility.
+
+`evals/cases/configure-permission/` contains a synthetic two-file example, with
+semantic expectations in `evals/expected/configure-permission.json`. The manual
+example command invokes real OpenCode; assess its report against those expectations.
+
 Add meaningful tests with new behavior: evidence truncation, restart identity,
 counter resets, grouping, citation validation, queue retry limits, and forbidden
 tool actions. Unit tests use fixtures, not production DAQ or paid model calls.

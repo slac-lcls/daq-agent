@@ -1,0 +1,5 @@
+# SYNTHETIC TEST FIXTURE: not a real TMO incident or deployed release
+# hutch=tmo partition=0 launch=synthetic-launch-001 release=synthetic-example
+2026-09-18T10:00:00-07:00 teb0 INFO configure received
+2026-09-18T10:00:00.500-07:00 teb0 ERROR Error connecting to 'Results' message queue - Error: Permission denied
+2026-09-18T10:00:00.600-07:00 teb0 ERROR configure could not complete

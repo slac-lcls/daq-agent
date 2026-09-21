@@ -1,0 +1,17 @@
+{
+  "case": "configure-permission",
+  "evidence_kind": "synthetic",
+  "required_observations": [
+    "Configure failed and the control excerpt names teb0.",
+    "The teb0 excerpt reports a permission error connecting to the Results message queue."
+  ],
+  "acceptable_hypothesis": "The queue-access error may explain the failed Configure.",
+  "unsupported_claims": [
+    "A stale queue is a confirmed root cause.",
+    "A particular user owns the queue.",
+    "Grafana confirmed the incident.",
+    "Deleting the queue is an established safe fix.",
+    "These logs are from a real TMO incident."
+  ],
+  "review": "Human semantic review; exact wording is not required."
+}

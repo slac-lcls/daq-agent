@@ -1,5 +1,9 @@
 # Deployment proposal
 
+The implemented log-analysis example is a manually invoked subprocess workflow,
+not an unattended service. Its [walkthrough](workflows/log-analysis.md) documents
+its actual configuration and access limits.
+
 ## Locations and ownership
 
 - Source: `slac-lcls/daq-agent`.
@@ -25,8 +29,11 @@ quotas, billing/budget, and permitted handling of operational evidence with the
 service owner. Prefer a dedicated project identity for scheduled use when
 available. Never copy shared key values into source, examples, reports, or logs.
 
-The sample configuration contains a model identifier only. No credentials,
-network access, or shared OpenCode modifications are performed by installation.
+The hutch configuration contains a model identifier only. Installation does not
+access credentials or services. Explicit `analyze-logs` execution imports one
+provider/model from a supplied OpenCode JSON file, preserving an external credential
+reference. It does not modify the shared configuration or inherit its agents/MCP
+servers. `--prepare-only` requires neither credentials nor an OpenCode installation.
 
 ## Preflight and scheduling
 
