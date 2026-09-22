@@ -131,14 +131,16 @@ daq-agent chat --hutch tmo
 
 Chat selects the latest completed report and displays its window. Ask a question
 such as "Explain finding 3 and its evidence." Use `/findings`, `/sources`, `/report`
-and `/exit` for local navigation. `daq-agent chat /path/to/report` selects a
+and `/exit` for local navigation. `/note TEXT` or `Save this note: TEXT` saves a
+local note; `/note` saves the last answer with citations. `/notes` retrieves notes. `daq-agent chat /path/to/report` selects a
 specific report; `daq-agent chat --resume CHAT_ID` continues a saved conversation.
 
 Chat reuses saved evidence and the report's pinned diagnostic skills without
 rescanning logs. Answers use the configured model service and retain citations.
 Conversations stay attached to their original report and are saved privately,
 separately from it. See [report chat](docs/workflows/report-chat.md) for context
-limits, model overrides and provenance.
+limits, model overrides and provenance. [Local notes](docs/workflows/local-notes.md)
+are saved under `~/daq/agent-logs/notes/<hutch>/` and can inform later chats.
 
 ## Development
 
@@ -159,6 +161,7 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Real TMO log analysis](docs/workflows/tmo-logs.md)
 - [Viewing reports](docs/viewing-reports.md)
 - [Chat with a report](docs/workflows/report-chat.md)
+- [Local investigation notes](docs/workflows/local-notes.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)
 - [Future live troubleshooting](docs/proposals/002-live-troubleshooting.md)

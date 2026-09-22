@@ -121,3 +121,9 @@ including consistent copies across report batches. It adds the packaged
 `report-chat` skill and audits every required skill load per question. The current
 configuration selects provider/model access; it does not silently replace a saved
 report's diagnostic skills. See [report chat](workflows/report-chat.md).
+
+
+The application-owned `report-chat` skill also describes local note commands and
+historical-note interpretation. Note files are stored by application code outside
+the repository; model output cannot write or publish them. This does not change
+the upstream DAQ skills. See [local notes](workflows/local-notes.md).

@@ -61,6 +61,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/report_skills.py` | Retained diagnostic skill verification across report batches |
 | `src/daq_agent/chat.py` | Bound conversations, per-question execution and durable resume |
 | `src/daq_agent/report_context.py` | Bounded finding/evidence retrieval and history selection |
+| `src/daq_agent/notes.py` | Local note intent parsing, private storage, provenance and bounded retrieval |
 | `src/daq_agent/chat_answers.py` | Conversational answer/citation validation and rendering |
 | `src/daq_agent/viewer.py` | Personal settings and token-protected loopback viewer |
 | `src/daq_agent/skills/` | Application-owned reporting instructions |
@@ -120,3 +121,11 @@ monitoring input from slow AMI processing.
 Future operations that change DAQ state require separate tools with validated
 arguments, preconditions, scoped authorization, concurrency protection, and
 post-action checks. They are outside the reporting MVP.
+
+
+Local investigation notes live under `<report-root>/notes/<hutch>/`, separately
+from immutable reports and conversation state. Explicit chat requests save user
+wording or the last accepted answer; relevant notes can inform later questions as
+historical unreviewed context. Application code owns writes and retrieval; the
+report-chat skill explains how to interpret notes. Promotion to shared DAQ skills
+or knowledge remains a separate review/publication workflow.

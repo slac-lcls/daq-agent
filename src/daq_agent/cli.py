@@ -71,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     chat.add_argument("--root", type=Path, help="report search root; defaults to the viewer's saved preference")
     chat.add_argument("--viewer-config", type=Path, help="personal viewer settings containing the report root")
     chat.add_argument("--resume", help="resume a saved conversation ID on its original report")
+    chat.add_argument("--notes-root", type=Path, help="local notes root; default: <report-root>/notes, with hutch subdirectories")
     chat.add_argument("--state-root", type=Path, help="override the private conversation storage root")
     chat.add_argument("--config", type=Path, help="current hutch provider/model settings; skills come from the report")
     chat.add_argument("--provider-config", type=Path)

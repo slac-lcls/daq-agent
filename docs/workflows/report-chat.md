@@ -1,6 +1,6 @@
 # Chat with a saved report
 
-Status: implemented terminal prototype in 0.7.0. Generate a report first, then
+Status: terminal chat implemented in 0.7.0; local notes added in 0.8.0. Generate a report first, then
 ask questions about its retained findings and evidence:
 
 ```bash
@@ -32,11 +32,15 @@ What additional evidence would distinguish these hypotheses?
 Draft a short DAQ meeting summary, including evidence gaps.
 ```
 
-Local commands do not call the model:
+Local commands do not call the model. See [local notes](local-notes.md) for the
+shared notes directory, natural-language forms and historical-context retrieval:
 
 - `/report`: selected report, window, models and skill provenance.
 - `/findings`: stable references such as F001 and the saved finding titles.
 - `/sources`: retained snapshot IDs and source paths.
+- `/note TEXT` or `Save this note: TEXT`: save your wording as a local note.
+- `/note` or `Save this note`: save the last completed answer with citations and limitations.
+- `/notes [ID or search]`: list, search or read same-hutch notes.
 - `/exit`: exit the conversation. EOF also exits; Ctrl+C during a question cancels
   that turn and returns to the prompt.
 
@@ -103,6 +107,7 @@ Per question, context is bounded to:
 - 8 evidence documents and 256 KiB of evidence.
 - 48 KiB of selected report context, including a summary excerpt and limitations.
 - At most six recent accepted turns and 16 KiB of history.
+- Up to three matching historical notes and 12 KiB of note context.
 - 80 KiB of complete prompt text; 128 KiB of available skill files.
 - 384 KiB of combined prompt, evidence and available skills; at most 600 seconds
   for the model subprocess, reducible with `--timeout`.

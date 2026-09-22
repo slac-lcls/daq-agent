@@ -36,7 +36,7 @@ class ChatTests(unittest.TestCase):
         self.settings = Settings('tmo', 'UTC', 'example/test', provider_config=str(provider), opencode=str(executable))
 
     def create(self, report=None):
-        return create_conversation(report or self.report, self.settings.model, self.state)
+        return create_conversation(report or self.report, self.settings.model, self.state, notes_root=self.reports / "notes")
 
     def turn(self, directory, question='Explain finding 1'):
         with conversation_lock(directory):
