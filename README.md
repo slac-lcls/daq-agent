@@ -7,8 +7,9 @@ for review by the hutch robustness monitor and the DAQ group.
 **Status: runnable reporting prototype.** `report` collects recent shared TMO
 logs and runs OpenCode with pinned DAQ skills to produce one report for the
 hutch and time window. Optional `report --log` accepts supplied excerpts.
-Reports contain cited findings, Markdown, and HTML. Grafana queries, interactive diagnosis, and
-continuous monitoring remain unimplemented. `--prepare-only` makes no model calls.
+Reports contain cited findings, Markdown, and HTML. `chat` answers follow-up
+questions about a saved report. Grafana queries, live diagnosis, and continuous
+monitoring remain unimplemented. `--prepare-only` makes no model calls.
 
 ## Quick start
 
@@ -122,6 +123,23 @@ New analyses also produce portable HTML for offline viewing. See
 [viewing reports](docs/viewing-reports.md) for NoMachine, SSH, personal settings,
 and access details. Viewing an existing report makes no model calls.
 
+## Chat with a report
+
+```bash
+daq-agent chat --hutch tmo
+```
+
+Chat selects the latest completed report and displays its window. Ask a question
+such as "Explain finding 3 and its evidence." Use `/findings`, `/sources`, `/report`
+and `/exit` for local navigation. `daq-agent chat /path/to/report` selects a
+specific report; `daq-agent chat --resume CHAT_ID` continues a saved conversation.
+
+Chat reuses saved evidence and the report's pinned diagnostic skills without
+rescanning logs. Answers use the configured model service and retain citations.
+Conversations stay attached to their original report and are saved privately,
+separately from it. See [report chat](docs/workflows/report-chat.md) for context
+limits, model overrides and provenance.
+
 ## Development
 
 ```bash
@@ -140,6 +158,7 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [One-command TMO reports](docs/workflows/rolling-report.md)
 - [Real TMO log analysis](docs/workflows/tmo-logs.md)
 - [Viewing reports](docs/viewing-reports.md)
+- [Chat with a report](docs/workflows/report-chat.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)
 - [Future live troubleshooting](docs/proposals/002-live-troubleshooting.md)

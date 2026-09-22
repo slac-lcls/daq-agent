@@ -114,3 +114,10 @@ audits the selected skills and its assigned evidence. Larger reports retain skil
 snapshots and runtime audits in each `batches/NNN/` directory; the root manifest
 maps those sessions to the combined report sources. Step and timeout limits apply
 per session, with at most 16 sessions per report.
+
+
+`chat` verifies and loads the diagnostic skills retained with its selected report,
+including consistent copies across report batches. It adds the packaged
+`report-chat` skill and audits every required skill load per question. The current
+configuration selects provider/model access; it does not silently replace a saved
+report's diagnostic skills. See [report chat](workflows/report-chat.md).

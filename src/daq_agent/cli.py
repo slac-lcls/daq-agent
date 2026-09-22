@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 
 from . import __version__
+from .chat import chat_report
 from .config import Settings, load_settings, validate_model
 from .workflow import plan_report
 from .viewer import view_report
@@ -64,8 +65,23 @@ def main(argv: list[str] | None = None) -> int:
     viewer.add_argument("--ssh-host", help="laptop SSH alias used in printed tunnel instructions")
     viewer.add_argument("--viewer-config", type=Path, help="personal viewer TOML configuration path")
     viewer.add_argument("--save-settings", action="store_true", help="save root, port, and SSH alias as personal defaults")
+    chat = commands.add_parser("chat", help="ask cited follow-up questions about a completed report")
+    chat.add_argument("run", nargs="?", type=Path, help="completed report directory (default: latest valid report)")
+    chat.add_argument("--hutch", help="select the latest completed report for this hutch")
+    chat.add_argument("--root", type=Path, help="report search root; defaults to the viewer's saved preference")
+    chat.add_argument("--viewer-config", type=Path, help="personal viewer settings containing the report root")
+    chat.add_argument("--resume", help="resume a saved conversation ID on its original report")
+    chat.add_argument("--state-root", type=Path, help="override the private conversation storage root")
+    chat.add_argument("--config", type=Path, help="current hutch provider/model settings; skills come from the report")
+    chat.add_argument("--provider-config", type=Path)
+    chat.add_argument("--opencode")
+    chat.add_argument("--model")
+    chat.add_argument("--timeout", type=int, default=600, help="OpenCode timeout per question, 1–600 seconds")
+    chat.add_argument("--question", help="ask one question and exit; otherwise open an interactive conversation")
     args = parser.parse_args(argv)
     try:
+        if args.command == "chat":
+            return chat_report(args)
         if args.command == "view":
             return view_report(args)
         if args.command == "report":
