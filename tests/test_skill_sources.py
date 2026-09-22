@@ -150,5 +150,84 @@ class SkillSourceTests(unittest.TestCase):
 
     def test_tmo_config_has_exact_pin(self):
         settings = load_settings(Path("config/hutches/tmo.toml"))
-        self.assertEqual(settings.daq_skills.revision, "198b6aa95229ef0e4ac5023c2a0d2e611124d46e")
-        self.assertEqual(settings.daq_skills.skills, ("psana-daq", "psana-daq-logs"))
+        self.assertEqual(settings.daq_skills.revision, "606038fed893ce788f1b865418ae6a569f66dc1d")
+        self.assertEqual(settings.daq_skills.skills, ('psana-daq', 'psana-daq-logs', 'psana-daq-control', 'psana-daq-monitor', 'psana-configdb', 'psana-daq-snapshot'))
+        from importlib.resources import files
+        from daq_agent.skill_sources import descriptor
+        import tomllib
+        packaged = tomllib.loads(files("daq_agent").joinpath("profiles/tmo.toml").read_text())
+        self.assertEqual(descriptor(settings.daq_skills), packaged["daq_skills"])
+
+    def test_composed_suite_retains_overview_references_and_chat(self):
+        from chat_fixtures import write_report, fake_chat_runtime
+        from daq_agent.chat import create_conversation, answer_question, load_conversation
+        from daq_agent.report_store import load_report
+        from daq_agent.skill_sources import retain_skills
+        names = ("psana-daq", "psana-daq-logs", "psana-daq-control",
+                 "psana-daq-monitor", "psana-configdb", "psana-daq-snapshot")
+        for name in names[2:]:
+            directory = self.repo / "skills" / name
+            directory.mkdir()
+            # Exercise the real suite's >128 KiB size, without vendoring its content.
+            (directory / "SKILL.md").write_text(
+                f"---\nname: {name}\ndescription: Synthetic guidance\n---\n" + "guidance\n" * 4000)
+        (self.repo / "skills/README.md").write_text("Synthetic suite overview\n")
+        self.git("add", ".")
+        self.git("commit", "--quiet", "-m", "composed suite")
+        self.source = replace(self.source, skills=names, revision=self.git("rev-parse", "HEAD").strip())
+        metadata, contents = read_snapshot(self.sync(), self.source)
+        self.assertGreater(sum(map(len, contents.values())), 128 * 1024)
+        self.assertIn("README.md", contents)
+        self.assertIn("psana-daq-logs/reference/patterns.md", contents)
+        report_path = write_report(self.root / "reports")
+        retained = retain_skills(self.source, report_path, self.cache)
+        manifest_path = report_path / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest.update(upstream_skills=retained, required_upstream_skills=list(names))
+        manifest_path.write_text(json.dumps(manifest))
+        conversation = create_conversation(load_report(report_path), "example/test", self.root / "chats")
+        self.assertEqual(load_conversation(conversation)[2], contents)
+        provider = self.root / "provider.json"
+        provider.write_text(json.dumps({"provider": {"example": {"npm": "@ai-sdk/anthropic", "models": {"test": {}},
+            "options": {"apiKey": "{env:SYNTHETIC_KEY}", "baseURL": "https://example.invalid/v1"}}}}))
+        settings = Settings("tmo", "UTC", "example/test", provider_config=str(provider),
+                            opencode=str(fake_chat_runtime(self.root)))
+        answer_question(conversation, settings, "Explain finding 1")
+        turn = json.loads((conversation / "turns/0001/manifest.json").read_text())
+        self.assertEqual(turn["runtime_audit"]["skills_loaded"], sorted(["report-chat", *names]))
+        (report_path / "upstream-skills/README.md").write_text("tampered")
+        with self.assertRaisesRegex(ValueError, "integrity"):
+            load_conversation(conversation)
+
+    def test_suite_overview_read_permission_and_audit(self):
+        workspace = self.root / "workspace"
+        overview = workspace / ".opencode/skills/README.md"
+        overview.parent.mkdir(parents=True)
+        overview.write_text("Synthetic overview")
+        names = list(self.source.skills)
+        for task, primary in (("report", "log-triage"), ("chat", "report-chat")):
+            with self.subTest(task=task):
+                config = session_config(workspace, {}, "example/test", names, task=task)
+                self.assertEqual(config["permission"]["read"][str(overview)], "allow")
+                self.assertEqual(config["permission"]["*"], "deny")
+                self.assertEqual(config["mcp"], {})
+                self.assertNotIn(str(overview), session_config(workspace, {}, "example/test", task=task)["permission"]["read"])
+                events = self.root / "events.jsonl"
+                def tool(name, args):
+                    return json.dumps({"type": "tool_use", "part": {"tool": name,
+                        "state": {"status": "completed", "input": args}}}) + "\n"
+                lines = [tool("skill", {"name": name}) for name in [primary, *names]]
+                lines.append(tool("read", {"filePath": str(overview)}))
+                events.write_text("".join(lines))
+                audit_evidence_access(events, workspace, [], names, task=task)
+                for forbidden in (".opencode/skills/other.md", ".opencode/skills/../outside.md"):
+                    events.write_text("".join(lines) + tool("read", {"filePath": forbidden}))
+                    with self.assertRaisesRegex(ValueError, "unexpected"):
+                        audit_evidence_access(events, workspace, [], names, task=task)
+
+    def test_snapshot_path_rejects_unselected_files(self):
+        from daq_agent.skill_sources import valid_snapshot_path
+        for name in ("../README.md", "README.md/child", "other.md", "psana-daq/../README.md",
+                     "psana-daq-history/SKILL.md", "/README.md", "./README.md"):
+            with self.subTest(name=name):
+                self.assertFalse(valid_snapshot_path(name, self.source.skills))

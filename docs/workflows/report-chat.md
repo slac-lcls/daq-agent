@@ -108,7 +108,7 @@ Per question, context is bounded to:
 - 48 KiB of selected report context, including a summary excerpt and limitations.
 - At most six recent accepted turns and 16 KiB of history.
 - Up to three matching historical notes and 12 KiB of note context.
-- 80 KiB of complete prompt text; 128 KiB of available skill files.
+- 80 KiB of complete prompt text; 192 KiB of available skill files.
 - 384 KiB of combined prompt, evidence and available skills; at most 600 seconds
   for the model subprocess, reducible with `--timeout`.
 
@@ -151,3 +151,14 @@ trace showed all three skill loads and both snapshot reads; returned citations
 passed validation. This checks the runtime connection and artifact workflow, not
 production diagnostic accuracy. Ordinary CI tests use a fake subprocess and need
 no credentials or model service.
+
+
+If OpenCode answers before loading required skills or reading selected evidence,
+chat rejects that attempt and retries once with an explicit evidence-read
+instruction. Both attempts share the original timeout and context limits. The
+terminal identifies missing skills/unread source IDs. A second incomplete attempt
+still fails; forbidden completed tools, invalid citations, and runtime failures
+are not retried by this mechanism. Only an audited and validated answer enters
+conversation history. Private turn artifacts retain the first trace under
+`rejected-attempt/` and the corrective prompt in `retry-prompt.txt`; the accepted
+runtime audit records its attempt count. This can add a second model call.

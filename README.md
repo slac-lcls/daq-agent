@@ -83,7 +83,8 @@ bash examples/log-analysis/run.sh
 ```
 
 The TMO configuration supplies the shared LCLS provider/executable paths and
-pins Seshu's DAQ routing/log skills. `sync-skills` needs Git and HTTPS access;
+pins all six DAQ diagnostic skills from the temporary PR #131 revision.
+`sync-skills` needs Git and HTTPS access;
 reporting verifies or synchronizes that exact revision before analysis. For an
 example without upstream access, pass `--local-skills-only` explicitly.
 

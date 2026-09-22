@@ -23,12 +23,12 @@ from .report_context import recent_history, select_context
 from .report_skills import retained_skills
 from .report_store import latest_report, load_report, read_artifact
 from .reporting import report_settings
-from .runtime import audit_evidence_access, extract_response, run_opencode, select_provider, session_config
+from .runtime import AUDIT_RETRY_INSTRUCTION, extract_response, run_audited_chat, run_opencode, select_provider, session_config
 from .viewer import load_viewer_settings
 
 MAX_TURNS = 1000
 MAX_INPUT_BYTES = 384 * 1024
-MAX_SKILL_BYTES = 128 * 1024
+MAX_SKILL_BYTES = 192 * 1024
 MAX_PROMPT_BYTES = 80 * 1024
 
 
@@ -190,6 +190,7 @@ def answer_question(directory, settings, question, timeout=600):
     required = metadata['skills']['skills']
     prompt = '\n'.join([
         'Load these skills by name: ' + ', '.join(['report-chat', *required]) + '. Then read every listed snapshot.',
+        'Before answering, use the read tool on EVERY listed evidence snapshot. Skill loads and finding summaries do not satisfy this requirement.',
         'Answer the user question about the bound historical report. Return ONLY JSON with exactly:',
         'answer (nonempty string), citations (list of {source, line_start, line_end}), limitations (nonempty string list).',
         'Use retained snapshot source IDs and 1-based original line numbers. Cite report-specific factual claims.',
@@ -202,7 +203,7 @@ def answer_question(directory, settings, question, timeout=600):
         'Old note citations belong to their original report, not the current source IDs. Local saving is handled by the application before model calls; never claim to have saved or published a note. For unsupported save wording, explain /note TEXT or /note for the last accepted answer.',
         json.dumps({'question': question, 'recent_history': history, 'context': context}),
     ])
-    prompt_bytes = len(prompt.encode())
+    prompt_bytes = len(prompt.encode()) + len(AUDIT_RETRY_INSTRUCTION.encode())
     skill_bytes = len(skill) + sum(map(len, upstream.values()))
     if prompt_bytes > MAX_PROMPT_BYTES or prompt_bytes + skill_bytes + sum(map(len, evidence.values())) > MAX_INPUT_BYTES:
         raise ValueError('chat input exceeds the bounded context budget; narrow the question or start a new conversation')
@@ -236,9 +237,9 @@ def answer_question(directory, settings, question, timeout=600):
                 target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
                 write_private(target, raw.decode())
             write_json(workspace / '.opencode/opencode.json', session_config(workspace, provider, settings.model, required, task='chat'))
-            status['opencode_version'] = run_opencode(str(Path(settings.opencode).expanduser()), workspace, prompt,
-                                                     settings.model, turn, timeout, task='chat')
-            status['runtime_audit'] = audit_evidence_access(turn / 'events.jsonl', workspace, context['sources'], required, task='chat')
+            status['opencode_version'], status['runtime_audit'] = run_audited_chat(
+                str(Path(settings.opencode).expanduser()), workspace, prompt, settings.model, turn,
+                timeout, context['sources'], required, runner=run_opencode)
         response = extract_response(turn / 'events.jsonl')
         write_private(turn / 'response.txt', response)
         answer = validate_answer(response, context['sources'])

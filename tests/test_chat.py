@@ -254,6 +254,59 @@ class ChatTests(unittest.TestCase):
         with patch.dict(os.environ, {'XDG_STATE_HOME': str(self.root / 'state')}):
             self.assertEqual(state_root(), self.root / 'state/daq-agent/chats')
 
+    def test_missing_reads_retry_once_and_keep_only_audited_answer(self):
+        from daq_agent.runtime import run_opencode
+        calls = []
+        def run(*args, **kwargs):
+            calls.append(args)
+            version = run_opencode(*args, **kwargs)
+            if len(calls) == 1:
+                events = args[4] / 'events.jsonl'
+                lines = [line for line in events.read_text().splitlines()
+                         if json.loads(line).get('part', {}).get('tool') != 'read']
+                events.write_text('\n'.join(lines) + '\n')
+            return version
+        directory = self.create()
+        with patch('daq_agent.chat.run_opencode', side_effect=run):
+            self.turn(directory)
+        self.assertEqual(len(calls), 2)
+        self.assertLessEqual(calls[1][5], calls[0][5])
+        self.assertIn('EVIDENCE AUDIT RETRY', calls[1][2])
+        turn = directory / 'turns/0001'
+        self.assertIn('unread sources: log-1', (turn / 'rejected-attempt/audit-error.txt').read_text())
+        self.assertTrue((turn / 'rejected-attempt/events.jsonl').is_file())
+        audit = json.loads((turn / 'manifest.json').read_text())['runtime_audit']
+        self.assertEqual(audit['attempts'], 2)
+        self.assertEqual(len(completed_turns(directory, self.report)), 1)
+        for path in (turn / 'rejected-attempt').iterdir():
+            self.assertEqual(path.stat().st_mode & 0o077, 0)
+
+    def test_incomplete_retry_still_fails_and_forbidden_tools_never_retry(self):
+        from daq_agent.runtime import run_opencode
+        for options, expected_calls in (({'skip_skill': True}, 2), ({'bad_tool': True}, 1)):
+            with self.subTest(options=options):
+                fake_chat_runtime(self.root, **options)
+                directory = self.create()
+                with patch('daq_agent.chat.run_opencode', wraps=run_opencode) as run:
+                    with self.assertRaises(ValueError):
+                        self.turn(directory)
+                    self.assertEqual(run.call_count, expected_calls)
+                self.assertEqual(completed_turns(directory, self.report), [])
+
+    def test_audit_retry_does_not_reset_timeout(self):
+        from daq_agent.runtime import run_audited_chat
+        output = self.root / 'timeout-turn'
+        output.mkdir()
+        def incomplete(*args, **kwargs):
+            (output / 'events.jsonl').write_text('')
+            return 'synthetic'
+        with patch('daq_agent.runtime.time.monotonic', side_effect=[0, 0, 601]), \
+                patch('daq_agent.runtime.run_opencode') as unused:
+            with self.assertRaises(TimeoutError):
+                run_audited_chat('unused', self.root, 'prompt', 'example/test', output, 600,
+                                 [{'id': 'log-1', 'snapshot': 'evidence/log-1.txt'}], runner=incomplete)
+            unused.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

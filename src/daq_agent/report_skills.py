@@ -2,10 +2,9 @@
 
 import hashlib
 import json
-from pathlib import PurePosixPath
 
 from .report_store import load_report, read_artifact
-from .skill_sources import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, parse_source, validate_skill
+from .skill_sources import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, parse_source, validate_skill, valid_snapshot_path
 
 
 def retained_skills(report):
@@ -61,9 +60,7 @@ def _retained_skills(report):
                     raise ValueError('invalid retained skill inventory')
                 current, total = {}, 0
                 for name, record in records.items():
-                    path = PurePosixPath(name)
-                    if (not isinstance(name, str) or path.is_absolute() or len(path.parts) < 2
-                            or path.parts[0] not in source.skills or any(p in {'', '.', '..'} for p in name.split('/'))):
+                    if not isinstance(name, str) or not valid_snapshot_path(name, source.skills):
                         raise ValueError('invalid retained skill path')
                     raw = read_artifact(directory, f'upstream-skills/{name}', MAX_FILE_BYTES)
                     total += len(raw)
