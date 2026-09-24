@@ -136,6 +136,12 @@ and `/exit` for local navigation. `/note TEXT` or `Save this note: TEXT` saves a
 local note; `/note` saves the last answer with citations. `/notes` retrieves notes. `daq-agent chat /path/to/report` selects a
 specific report; `daq-agent chat --resume CHAT_ID` continues a saved conversation.
 
+For a longer investigation, enter `/task-transfer [investigation goal]`. It prepares
+an evidence-backed handoff and opens a persistent OpenCode session with the report's
+pinned skills and instructions for writing a private investigation note. Use
+`/task-transfer --prepare-only [goal]` to prepare without launching OpenCode. See
+[task transfer](docs/workflows/task-transfer.md) for resume and tool boundaries.
+
 Chat reuses saved evidence and the report's pinned diagnostic skills without
 rescanning logs. Answers use the configured model service and retain citations.
 Conversations stay attached to their original report and are saved privately,
@@ -163,6 +169,7 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Viewing reports](docs/viewing-reports.md)
 - [Chat with a report](docs/workflows/report-chat.md)
 - [Local investigation notes](docs/workflows/local-notes.md)
+- [Transfer an investigation to OpenCode](docs/workflows/task-transfer.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)
 - [Future live troubleshooting](docs/proposals/002-live-troubleshooting.md)

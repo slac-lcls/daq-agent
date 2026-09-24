@@ -162,3 +162,10 @@ are not retried by this mechanism. Only an audited and validated answer enters
 conversation history. Private turn artifacts retain the first trace under
 `rejected-attempt/` and the corrective prompt in `retry-prompt.txt`; the accepted
 runtime audit records its attempt count. This can add a second model call.
+
+
+For investigations needing a persistent OpenCode conversation, use
+`/task-transfer [goal]`. It prepares a separate workspace with the retained
+report/skills, accepted chat context and a private note destination, then opens
+OpenCode in an interactive terminal. Add `--prepare-only` immediately after the
+command to prepare without launch. See [task transfer](task-transfer.md).
