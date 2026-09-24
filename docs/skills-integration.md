@@ -6,16 +6,24 @@ verifies or synchronizes the exact pinned revision first; it never follows a bra
 
 ## Temporary upstream source
 
-The TMO configuration uses the accepted revision of
-[LCLS2 PR #125](https://github.com/slac-lcls/lcls2/pull/125):
+The TMO configuration temporarily uses the corrected revision from
+[LCLS2 PR #131](https://github.com/slac-lcls/lcls2/pull/131), pending its merge into
+`features/psana-daq-monitor`:
 
 ```toml
 [daq_skills]
 repository = "https://github.com/slac-lcls/lcls2"
-branch = "features/psana-daq-monitor"
-revision = "198b6aa95229ef0e4ac5023c2a0d2e611124d46e"
+branch = "codex/psana-daq-skills-review"
+revision = "606038fed893ce788f1b865418ae6a569f66dc1d"
 directory = "psana/psana/skills"
-skills = ["psana-daq", "psana-daq-logs"]
+skills = [
+  "psana-daq",
+  "psana-daq-logs",
+  "psana-daq-control",
+  "psana-daq-monitor",
+  "psana-configdb",
+  "psana-daq-snapshot",
+]
 ```
 
 The branch identifies ongoing development; the full commit SHA selects the actual
@@ -37,7 +45,8 @@ daq-agent view
 `sync-skills` requires Git and HTTPS access to the source repository. It fetches
 the pinned commit into a temporary Git object store without checking out or
 executing upstream code. It retains complete selected directories, including
-supporting references, under `$XDG_CACHE_HOME/daq-agent/skills/<source-hash>`
+supporting references, plus the optional suite-level `README.md`, under
+`$XDG_CACHE_HOME/daq-agent/skills/<source-hash>`
 (default `~/.cache/daq-agent/skills/`). It does not install or import psana.
 
 It validates names/frontmatter, regular files, file counts, and size limits.
@@ -67,9 +76,10 @@ unit tests exercise synchronization against a local Git fixture.
 | `log-triage` | Packaged report contract, evidence handling, uncertainty |
 | `psana-daq` | Pinned DAQ routing and release/session interpretation guidance |
 | `psana-daq-logs` | Pinned log-header, component, severity, and session guidance |
-| `psana-daq-control` | Not selected; live DAQ state/control tools unavailable |
-| `psana-daq-monitor` | Not selected; Grafana tools/access unavailable |
-| `psana-configdb` | Not selected; ConfigDB tools unavailable |
+| `psana-daq-control` | State/transition interpretation from retained evidence; live tools unavailable |
+| `psana-daq-monitor` | Metrics interpretation and coverage guidance; Grafana adapter unavailable |
+| `psana-configdb` | Configuration evidence and candidate/applied distinction; service adapter unavailable |
+| `psana-daq-snapshot` | Composed diagnosis over the supplied scope; application JSON contract takes precedence |
 
 Upstream skills describe live diagnostics, including commands, sibling skills,
 and source-tree lookups. This application's task and primary-agent instructions
@@ -99,8 +109,9 @@ support-file changes, and replay evaluation cases. Preserve fixes upstream rathe
 than maintaining divergent local copies. A skill's presence is not proof that
 its tools, host routes, or credentials work.
 
-Add live tools individually with explicit scope and read-only boundaries before
-enabling the corresponding skills. Historical tasks must continue to supply
+Add service adapters individually with explicit scope and read-only boundaries
+before enabling live queries. Loading their guidance does not enable a service.
+Historical tasks must continue to supply
 hutch and an explicit window, with run/launch, platform and release metadata
 where known. Platform is not a reporting boundary.
 The source configuration can later point at a merged branch or a dedicated skill
@@ -114,3 +125,37 @@ audits the selected skills and its assigned evidence. Larger reports retain skil
 snapshots and runtime audits in each `batches/NNN/` directory; the root manifest
 maps those sessions to the combined report sources. Step and timeout limits apply
 per session, with at most 16 sessions per report.
+
+
+`chat` verifies and loads the diagnostic skills retained with its selected report,
+including consistent copies across report batches. It adds the packaged
+`report-chat` skill and audits every required skill load per question. The current
+configuration selects provider/model access; it does not silently replace a saved
+report's diagnostic skills. See [report chat](workflows/report-chat.md).
+
+
+The application-owned `report-chat` skill also describes local note commands and
+historical-note interpretation. Note files are stored by application code outside
+the repository; model output cannot write or publish them. This does not change
+the upstream DAQ skills. See [local notes](workflows/local-notes.md).
+
+
+## Temporary PR #131 adoption
+
+All six selected skills and their references are retained and verified for new
+reports; existing reports and resumed chats retain their original skill bytes.
+The suite is larger than the old chat skill budget: the skill-file limit is now
+192 KiB, while the overall per-question input limit remains 384 KiB. Each question
+still loads/audits all selected skills, so this change does not claim lower chat
+latency. No live service or paid model call is part of deterministic validation.
+
+The snapshot Markdown template is diagnostic guidance, not a parser input or a
+replacement for application findings, chat answers or private notes. Missing
+services must appear in limitations. No Grafana, DAQ control, ConfigDB or GitHub
+history adapter is added here. `psana-daq-history` is absent, no issue schema is
+supplied, and historical-key retrieval remains unsupported. Upstream helper
+scripts are never executed by synchronization or by the model runtime.
+
+After #131 merges, verify its resulting commit on `features/psana-daq-monitor`,
+review any additional changes, and update both the checkout configuration and
+packaged profile to that exact SHA. Do not switch to a moving branch tip.

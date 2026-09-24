@@ -12,6 +12,14 @@ import tempfile
 MAX_FILE_BYTES = 256 * 1024
 MAX_TOTAL_BYTES = 2 * 1024 * 1024
 MAX_FILES = 100
+SUITE_FILES = frozenset({"README.md"})
+
+
+def valid_snapshot_path(name: str, skills) -> bool:
+    relative = PurePosixPath(name)
+    return (not relative.is_absolute() and str(relative) == name
+            and not any(part in {"", ".", ".."} for part in name.split("/"))
+            and (name in SUITE_FILES or (len(relative.parts) >= 2 and relative.parts[0] in skills)))
 
 
 @dataclass(frozen=True)
@@ -90,9 +98,7 @@ def read_snapshot(directory: Path, source: SkillSource) -> tuple[dict, dict[str,
             raise ValueError("invalid skill cache inventory")
         contents, total = {}, 0
         for name, record in records.items():
-            relative = PurePosixPath(name)
-            if (relative.is_absolute() or ".." in relative.parts or len(relative.parts) < 2
-                    or relative.parts[0] not in source.skills or str(relative) != name):
+            if not valid_snapshot_path(name, source.skills):
                 raise ValueError("invalid skill cache path")
             path = directory / name
             if any(parent.is_symlink() for parent in (path, *path.parents) if parent != directory.parent):
@@ -143,8 +149,10 @@ def sync_skills(source: SkillSource, root: Path | None = None) -> Path:
         if git("rev-parse", "FETCH_HEAD^{commit}").decode().strip() != source.revision:
             raise ValueError("fetched revision does not match configured commit")
         records, total = {}, 0
-        for name in source.skills:
-            prefix = f"{source.directory}/{name}/"
+        # Include the optional suite overview referenced by selected skills.
+        paths = [f"{name}/" for name in source.skills] + sorted(SUITE_FILES)
+        for name in paths:
+            prefix = f"{source.directory}/{name}"
             entries = git("ls-tree", "-r", "-z", "--full-tree", source.revision, "--", prefix)
             for entry in entries.split(b"\x00"):
                 if not entry:
@@ -160,9 +168,7 @@ def sync_skills(source: SkillSource, root: Path | None = None) -> Path:
                     raise ValueError("upstream skills exceed size limits")
                 content = git("cat-file", "blob", object_id)
                 relative = path[len(source.directory) + 1:]
-                parts = PurePosixPath(relative)
-                if (parts.is_absolute() or any(part in {"", ".", ".."} for part in relative.split("/"))
-                        or len(parts.parts) < 2 or parts.parts[0] not in source.skills):
+                if not valid_snapshot_path(relative, source.skills):
                     raise ValueError("unsafe upstream skill path")
                 destination = snapshot / relative
                 destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)

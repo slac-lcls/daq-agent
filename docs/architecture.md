@@ -14,6 +14,8 @@ gets one draft with pinned upstream DAQ guidance, validated citation locations,
 and retained evidence. Larger evidence sets use multiple bounded sessions; Python
 combines their findings without a further model call. Cross-batch incident
 deduplication and causal synthesis remain future work.
+`chat` supports follow-up conversations bound to saved reports, with retained
+diagnostic skills, bounded context retrieval, validated citations and resume.
 Grafana integration, incident history, and a continuous service remain future
 work. See [one-command reporting](workflows/rolling-report.md) and
 [the supplied-excerpt workflow](workflows/log-analysis.md).
@@ -55,7 +57,13 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
 | `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
 | `src/daq_agent/html_reports.py` | Portable HTML reports and line-numbered evidence pages |
-| `src/daq_agent/viewer.py` | Completed-report selection, personal settings, and token-protected loopback viewer |
+| `src/daq_agent/report_store.py` | Shared report loading, integrity checks and latest selection |
+| `src/daq_agent/report_skills.py` | Retained diagnostic skill verification across report batches |
+| `src/daq_agent/chat.py` | Bound conversations, per-question execution and durable resume |
+| `src/daq_agent/report_context.py` | Bounded finding/evidence retrieval and history selection |
+| `src/daq_agent/notes.py` | Local note intent parsing, private storage, provenance and bounded retrieval |
+| `src/daq_agent/chat_answers.py` | Conversational answer/citation validation and rendering |
+| `src/daq_agent/viewer.py` | Personal settings and token-protected loopback viewer |
 | `src/daq_agent/skills/` | Application-owned reporting instructions |
 | `config/hutches/` | Non-secret hutch examples |
 | `tests/` | Deterministic software tests |
@@ -113,3 +121,11 @@ monitoring input from slow AMI processing.
 Future operations that change DAQ state require separate tools with validated
 arguments, preconditions, scoped authorization, concurrency protection, and
 post-action checks. They are outside the reporting MVP.
+
+
+Local investigation notes live under `<report-root>/notes/<hutch>/`, separately
+from immutable reports and conversation state. Explicit chat requests save user
+wording or the last accepted answer; relevant notes can inform later questions as
+historical unreviewed context. Application code owns writes and retrieval; the
+report-chat skill explains how to interpret notes. Promotion to shared DAQ skills
+or knowledge remains a separate review/publication workflow.
