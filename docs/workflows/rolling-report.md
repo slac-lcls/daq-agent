@@ -1,6 +1,6 @@
 # One report for a hutch and time window
 
-Status: implemented in 0.5.0. Run on SDF with access to the shared hutch logs,
+Status: implemented; automatic evidence batching added in 0.6.0. Run on SDF with access to the shared hutch logs,
 configured OpenCode executable, and model provider credentials:
 
 ```bash
@@ -46,7 +46,8 @@ operator workflow. `--synthetic` is available only with explicit `--log` inputs.
 `--config` overrides the packaged profile; its hutch must match `--hutch`.
 `--log-root`, `--output`, `--provider-config`, `--opencode`, `--model`, and
 `--skills-cache` override their corresponding defaults. The OpenCode timeout is
-600 seconds, reducible with `--timeout`. A legacy `partition` config field is
+600 seconds **per model session**, reducible with `--timeout`. Larger reports
+can take multiple sessions, with model usage for each batch. A legacy `partition` config field is
 accepted for compatibility but does not restrict reporting. There is no
 `report --partition` option.
 
@@ -57,10 +58,16 @@ accepted for compatibility but does not restrict reporting. There is no
    file prefixes, counts patterns, and prepares bounded context with original
    paths and line numbers. Files are associated by their launch prefix; platform
    headers remain in each source record.
-3. `log_analysis.py` retains the collection and invokes **one** restricted
-   OpenCode session using all prepared evidence documents and the pinned skills.
-4. Schema and citation-location checks run before one Markdown/HTML report and
-   structured findings are written. Conclusions still require human review.
+3. `batches.py` plans sessions by evidence count and bytes before any model call.
+   Small inputs go directly to `log_analysis.py`; larger inputs are split, keeping
+   each launch document intact and repeating the full-window scope in each batch.
+4. Each restricted OpenCode session loads the pinned skills and reads its assigned
+   evidence. Schema, citation-location, and actual tool-use checks run per session.
+5. Python combines every validated finding and batch summary into one Markdown/HTML
+   report, remapping citations to retained report-wide sources. There is no extra
+   model synthesis call. Findings may overlap across batches; no incident
+   deduplication or cross-batch causal analysis is claimed. Conclusions still
+   require human review.
 
 A launch prefix is a log-session identity, **not a numbered data-taking run**.
 A launch can span multiple runs. Explicit run references in retained context
@@ -78,6 +85,7 @@ manifest.json                 # hutch/window scope, provenance, status
 collection/collection.json    # captured source inventory, headers, hashes, counts
 collection/*.log              # scope and per-launch evidence documents
 evidence/log-N.txt            # stable snapshots actually read by OpenCode
+batches/NNN/                  # only for multi-session reports: individual session artifacts
 findings.json                 # structured draft findings
 report.md / report.html       # one report covering the hutch/window
 ```
@@ -89,7 +97,9 @@ citations open retained evidence snapshots.
 
 Collection failures abort before analysis. Once analysis starts, failures retain
 a failed manifest and evidence; no successful report is claimed. Preparation
-saves evidence but makes no model call and is not selected by the viewer.
+saves evidence for every planned batch but makes no model call and is not selected
+by the viewer. If any batch fails, the combined report is marked failed; completed
+batches are retained for diagnosis and excluded from automatic viewer selection.
 
 ## Coverage and bounds
 
@@ -108,13 +118,19 @@ arbitrary credentials cannot be reliably detected. Evidence stays outside the
 repository and excerpts go to the configured model service.
 
 Limits: at most 7 days, 20,000 discovery entries, 2,000 candidate logs,
-32 MiB/file and 512 MiB/collection, with at most seven launch groups in the
-hutch/window. Candidate symlinks, `.zst` files, invalid UTF-8, and oversized scans
+32 MiB/file and 512 MiB/collection. Candidate symlinks, `.zst` files, invalid UTF-8, and oversized scans
 fail explicitly. Narrow the window or supply scoped/decompressed excerpts with
-`report --log`. Larger-window chunking and report synthesis remain future work.
+`report --log`.
 
-The model receives one scope summary plus per-launch documents within the
-existing 8-file, 64 KiB/file, 256 KiB total limits. Counts cover captured prefixes;
+Each model session receives at most 8 documents, 64 KiB/document and 256 KiB total.
+The collector prepares one scope summary plus one document per launch; the scope
+summary is repeated in every session. There is no seven-launch limit on the report.
+The full report is bounded to 128 documents, 4 MiB of unique evidence and 16 sessions.
+The repeated scope counts toward each session budget, so automatic collection can
+fit fewer than 128 launch documents. A scope document over 64 KiB also fails
+explicitly. Inputs exceeding these bounds fail before any model call, without
+silently dropping launches. Supplied `--log` inputs use the same batching limits
+but have no automatically repeated scope document. Counts cover captured prefixes;
 the model sees selected contexts, not every message. Sampling and omissions are
 explicit; tracebacks retain up to 64 lines. Matching-line and launch counts are
 not incident counts, run counts, downtime or lost-event measurements. Grafana

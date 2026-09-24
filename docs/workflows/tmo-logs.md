@@ -33,8 +33,10 @@ such as component ID, platform, host, job ID, and `TESTRELDIR`/release. Readable
 shared files do not require SSH to the hutch, and the model never needs hutch shell
 access for this workflow.
 
-Supply 1–8 UTF-8 files, each at most 64 KiB and at most 256 KiB total. For larger
-logs, prepare explicit excerpts in a private directory outside the repository.
+Supply UTF-8 excerpts, each at most 64 KiB. Each model session handles up to
+8 files and 256 KiB; larger sets are batched automatically, up to 128 files,
+4 MiB and 16 sessions per report. For larger individual logs, prepare explicit
+excerpts in a private directory outside the repository.
 Record original paths, retained original line ranges, collection time, launch
 prefix, and any omissions/redactions. Keep useful header and surrounding context.
 Never concatenate separated ranges without marking the gap. A head/tail sample
@@ -66,7 +68,8 @@ Omit `--synthetic` for real logs. Use `--prepare-only` to inspect retained evide
 skills, and prompt before a model call. The default output is a unique private run
 under `~/daq/agent-logs/tmo/YYYY/MM/`. An explicit `--output` must name a new directory.
 
-Review `manifest.json` for the pinned skill revision and `runtime_audit.skills_loaded`;
+Review `manifest.json` (or each `batches/NNN/manifest.json` for a batched report)
+for the pinned skill revision and `runtime_audit.skills_loaded`;
 it must list `log-triage`, `psana-daq`, and `psana-daq-logs`. The browser viewer can
 show the draft and cited evidence. Findings must distinguish observed messages
 from cause hypotheses and acknowledge missing Grafana/live-state evidence.

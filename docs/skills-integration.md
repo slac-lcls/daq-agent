@@ -109,5 +109,8 @@ repository. AMI's package-discovery approach remains another future source adapt
 `daq-agent report --hutch tmo --last 2d` performs pinned synchronization before
 collection and analysis, reusing a verified cache when available. The collector
 is application code; it does not execute upstream scripts or give the model
-access to the shared source log tree. One OpenCode analysis loads and audits
-the selected skills across all prepared hutch/window evidence.
+access to the shared source log tree. Each bounded OpenCode session loads and
+audits the selected skills and its assigned evidence. Larger reports retain skill
+snapshots and runtime audits in each `batches/NNN/` directory; the root manifest
+maps those sessions to the combined report sources. Step and timeout limits apply
+per session, with at most 16 sessions per report.

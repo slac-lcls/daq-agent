@@ -2,27 +2,32 @@
 
 import json
 
-
-def _text(value, name):
-    if not isinstance(value, str) or not value.strip() or len(value) > 16000:
-        raise ValueError(f"{name} must be nonempty text of at most 16000 characters")
+MAX_BATCHES = 16
+MAX_BATCH_FINDINGS = 20
 
 
-def validate_findings(text: str, sources: list[dict]) -> dict:
+def _text(value, name, limit=16000):
+    if not isinstance(value, str) or not value.strip() or len(value) > limit:
+        raise ValueError(f"{name} must be nonempty text of at most {limit} characters")
+
+
+def validate_findings(text: str, sources: list[dict], *, combined=False) -> dict:
     text = text.strip()
     if text.startswith("```json\n") and text.endswith("```"):
         text = text[len("```json\n"):-3].strip()
     result = json.loads(text)
     if not isinstance(result, dict) or set(result) != {"summary", "findings", "limitations"}:
         raise ValueError("response must contain exactly summary, findings, and limitations")
-    _text(result["summary"], "summary")
-    if not isinstance(result["limitations"], list) or not 1 <= len(result["limitations"]) <= 20:
+    max_findings = MAX_BATCHES * MAX_BATCH_FINDINGS if combined else MAX_BATCH_FINDINGS
+    max_limitations = 1 + MAX_BATCHES * 20 if combined else 20
+    _text(result["summary"], "summary", (16000 + 64) * MAX_BATCHES if combined else 16000)
+    if not isinstance(result["limitations"], list) or not 1 <= len(result["limitations"]) <= max_limitations:
         raise ValueError("response must state limitations")
     for limitation in result["limitations"]:
-        _text(limitation, "limitation")
+        _text(limitation, "limitation", 16032 if combined else 16000)
     findings = result["findings"]
-    if not isinstance(findings, list) or len(findings) > 20:
-        raise ValueError("findings must be a list of at most 20 items")
+    if not isinstance(findings, list) or len(findings) > max_findings:
+        raise ValueError(f"findings must be a list of at most {max_findings} items")
     counts = {source["id"]: source["lines"] for source in sources}
     for finding in findings:
         fields = {"title", "observation", "hypothesis", "next_check", "evidence"}
@@ -78,5 +83,6 @@ def render_report(result: dict, manifest: dict) -> str:
     lines.extend(["## Limitations", ""])
     lines.extend(f"- {item}" for item in result["limitations"])
     lines.extend(["", "## Provenance", "", f"Model: `{settings['model']}`", "",
-                  "See `manifest.json`, `events.jsonl`, and the retained evidence snapshots.", ""])
+                  ("See `manifest.json`, `batches/*/manifest.json`, batch runtime traces, and the retained evidence snapshots."
+                   if manifest.get("aggregation") else "See `manifest.json`, `events.jsonl`, and the retained evidence snapshots."), ""])
     return "\n".join(lines)

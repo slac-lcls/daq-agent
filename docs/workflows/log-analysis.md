@@ -81,7 +81,7 @@ overrides this with an exact path, which must be new.
 
 `--model provider/model` overrides the
 hutch default, but that exact model must exist in the supplied provider config.
-`--timeout` defaults to 600 seconds and may be set to at most 600. A real run uses
+`--timeout` defaults to 600 seconds per model session and may be set to at most 600. A real run uses
 the model API; the regular CI workflow never does.
 
 ## Supply your own excerpts
@@ -102,8 +102,12 @@ The model is instructed to distinguish contextual lines outside the window.
 That attribution still requires human review. `--synthetic` is an explicit label,
 not automatic detection; omit it for real excerpts.
 
-Limits: 1–8 regular UTF-8 files, at most 64 KiB each and 256 KiB total. Oversized
-inputs fail rather than silently dropping evidence. Source files are never edited.
+Limits: 1–128 regular UTF-8 files, at most 64 KiB each and 4 MiB total, fitting
+at most 16 sessions. Each session receives at most 8 files and 256 KiB. Larger
+sets are split automatically in supplied order; findings are combined into one
+report with remapped citations, without cross-batch incident deduplication.
+Inputs exceeding these limits fail before model calls rather than silently
+dropping evidence. Source files are never edited.
 
 ## Skills and access
 
@@ -133,7 +137,7 @@ Other diagnostic skills and their service integrations are unavailable.
 ## Outputs and failure behavior
 
 The newly created output directory has mode 0700; retained files use mode 0600.
-It contains:
+For a single model session it contains:
 
 - `manifest.json`: scope, model, application/runtime version, skill hash, source
   hashes/line counts, evidence label, Grafana status, and execution status.
@@ -144,6 +148,11 @@ It contains:
 - `response.txt`: the returned model text.
 - `findings.json` and `report.md`: emitted after schema/citation checks pass.
 - `report.html` and `logs/log-N.html`: portable formatted report and linked log views.
+
+For multiple sessions, the root retains the combined manifest, evidence, findings,
+and Markdown/HTML report. Individual prompts, skills, audits and runtime traces
+live under `batches/NNN/`. Each session must pass the same validation; any failure
+marks the root failed and prevents publication of a successful combined report.
 
 Use `daq-agent view` to browse the latest completed report, or supply this run
 directory explicitly. See [viewing reports](../viewing-reports.md) for SSH and
