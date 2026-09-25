@@ -7,7 +7,9 @@ for review by the hutch robustness monitor and the DAQ group.
 **Status: runnable reporting prototype.** `report` collects recent shared TMO
 logs and runs OpenCode with pinned DAQ skills to produce one report for the
 hutch and time window. Optional `report --log` accepts supplied excerpts.
-Reports contain cited findings, Markdown, and HTML. `chat` answers follow-up
+Reports contain cited findings, Markdown, and HTML. New reports also show generation
+time and coverage counts (raw log files, launch groups, evidence documents, and
+completed model sessions); numbered DAQ runs remain not determined. `chat` answers follow-up
 questions about a saved report. Grafana queries, live diagnosis, and continuous
 monitoring remain unimplemented. `--prepare-only` makes no model calls.
 

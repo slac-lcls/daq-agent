@@ -135,3 +135,37 @@ the model sees selected contexts, not every message. Sampling and omissions are
 explicit; tracebacks retain up to 64 lines. Matching-line and launch counts are
 not incident counts, run counts, downtime or lost-event measurements. Grafana
 and live-state evidence are unavailable in this workflow.
+
+
+## Generation and coverage summary
+
+Version 0.9.1 adds an application-generated summary near the top of both the HTML
+and Markdown report. It records generation time, raw log files scanned, launch
+groups included, unique evidence documents and completed OpenCode model sessions.
+Numbered DAQ runs are explicitly **Not determined**: a launch may contain several
+runs, and no authoritative run enumeration is performed.
+
+Timing uses a monotonic clock beginning at report generation entry, before pinned
+skill synchronization and log discovery. It includes collection, model sessions,
+validation, aggregation and initial report rendering. The measurement is captured
+before the final statistics are written into the report and manifest; that final
+publication overhead is excluded. UTC start and measurement timestamps, elapsed
+seconds and counts are saved as `generation_statistics` in `manifest.json`.
+Completion is published only after final HTML/Markdown generation succeeds.
+
+Counts come from the retained collection inventory, not model-generated prose.
+Each captured raw file and launch group counts once, regardless of platform.
+Evidence documents are distinct from raw files: collected inputs contain one
+scope document plus launch summaries. The shared scope document counts once in
+the overall evidence total even when it is read in several model sessions.
+These counts describe candidate log coverage, not verified activity throughout
+the requested time window.
+
+For `report --log`, the summary shows supplied-file and evidence counts but marks
+raw-file and launch totals as **Not determined (supplied excerpts)**. It does not
+assume that each excerpt represents a distinct launch or complete raw log.
+`--prepare-only` saves statistics in the manifest with zero completed model
+sessions and a separate planned-session count; it still creates no findings or
+HTML/Markdown report. Older reports remain readable and show **Not recorded** for
+missing measurements; their analysis timestamps are not mislabeled as total
+generation time. Viewing older reports does not modify their saved artifacts.

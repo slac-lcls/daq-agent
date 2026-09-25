@@ -46,7 +46,8 @@ def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], out
                  provider_config: Path | None, executable: str, timeout: int = 600,
                  prepare_only: bool = False, synthetic: bool = False, *,
                  skills_cache: Path | None = None, local_skills_only: bool = False,
-                 collected_inputs: Path | None = None, batch_context: dict | None = None) -> Path:
+                 collected_inputs: Path | None = None, batch_context: dict | None = None,
+                 defer_completion: bool = False) -> Path:
     plan = plan_report(settings, start, end)
     if not 1 <= timeout <= 600:
         raise ValueError("timeout must be between 1 and 600 seconds")
@@ -118,8 +119,9 @@ def analyze_logs(settings: Settings, start: str, end: str, logs: list[Path], out
         write_json(output / "findings.json", findings)
         write_private(output / "report.md", render_report(findings, manifest))
         write_html_bundle(output, findings, manifest)
-        manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
-        manifest["status"] = "completed"
+        if not defer_completion:
+            manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
+            manifest["status"] = "completed"
         manifest["validation"] = "schema and citation locations; conclusions require human review"
         return output
     except BaseException as error:
