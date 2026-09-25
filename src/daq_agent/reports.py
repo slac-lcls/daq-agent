@@ -2,6 +2,8 @@
 
 import json
 
+from .report_statistics import statistics_rows
+
 MAX_BATCHES = 16
 MAX_BATCH_FINDINGS = 20
 
@@ -64,6 +66,9 @@ def render_report(result: dict, manifest: dict) -> str:
         f"Evidence kind: **{manifest['evidence_kind']}**. Only supplied excerpts were analyzed.",
         "Grafana: **not queried — integration unavailable in this workflow**.",
         "Citation locations were validated; diagnostic conclusions still need human review.", "",
+        "## Generation and coverage", "",
+        *[f"- **{label}:** {value}" for label, value in statistics_rows(manifest)], "",
+        "Launch groups are not numbered DAQ runs. Counts describe retained input coverage, not confirmed activity throughout the window.", "",
         "## Summary", "", result["summary"], "", "## Findings", "",
     ]
     sources = {source["id"]: source for source in manifest["sources"]}
