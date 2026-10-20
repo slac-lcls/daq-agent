@@ -63,6 +63,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/report_skills.py` | Retained diagnostic skill verification across report batches |
 | `src/daq_agent/chat.py` | Bound conversations, per-question execution and durable resume |
 | `src/daq_agent/report_context.py` | Bounded finding/evidence retrieval and history selection |
+| `src/daq_agent/investigation_evidence.py` | Verified follow-up appendices derived from saved known-condition metadata |
 | `src/daq_agent/task_transfer.py` | Immutable investigation handoff, runtime selection and OpenCode launch/resume permissions |
 | `src/daq_agent/claude_transfer.py` | Isolated Claude launch/resume with explicit deployment configuration |
 | `src/daq_agent/claude_config.py` | Explicit personal/LCLS credentials, executable selection and model settings |

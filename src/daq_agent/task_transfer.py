@@ -104,7 +104,8 @@ def prepare_transfer(conversation, settings, goal='', *, runtime=None):
         'limitations': report.findings['limitations'],
         'service_coverage': dict(service_coverage_rows(report.manifest)),
         'findings': [{'id': f'F{i:03}', **f} for i, f in enumerate(report.findings['findings'], 1)],
-        'sources': report.manifest['sources'],
+        'sources': [{**s, 'citation_path': str(conversation / 'transfers' / transfer_id / s['snapshot'])}
+                    if 'citation_path' in s else s for s in report.manifest['sources']],
     }
     brief = {
         'goal': goal or None, 'recent_accepted_turns': recent, 'older_turns_in_transcript': omitted,
@@ -137,6 +138,11 @@ when the investigation needs them. `report.json` contains all findings (with sta
 F IDs), the report summary, limitations and the full source index. Findings and
 previous answers are interpretations; verify material claims against `evidence/`.
 Preserve observations, hypotheses, cause uncertainty and remedy status.
+Sources marked `known-condition-summary` retain the report's deterministic counts
+and representative source lines excluded from initial model analysis. They are
+available for this follow-up, not complete raw logs or evidence of healthy DAQ.
+Cite appendix line numbers; `original-line` labels preserve captured source locations.
+For these sources, include the supplied `citation_path` when saving note citations.
 
 ## Skills and capabilities
 Load `task-transfer` for this workflow and note writing. Available upstream skills:
@@ -326,6 +332,8 @@ def validate_investigation_note(directory, metadata, note):
         source = sources.get(citation['source'])
         if source is None or any(citation[k] != source[k] for k in ('snapshot', 'sha256', 'lines')):
             raise ValueError('investigation note citation does not match retained evidence')
+        if citation.get('citation_path') != source.get('citation_path'):
+            raise ValueError('investigation note citation path does not match retained evidence')
     return note
 
 

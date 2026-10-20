@@ -54,3 +54,25 @@ daq-agent report --hutch tmo --from 2026-09-23 --to 2026-09-25 \
 
 Existing reports are unchanged. This policy governs report generation; an
 explicit follow-up chat or task transfer can still start a model session.
+
+Follow-up chat creates private, line-numbered evidence appendices from the
+report's saved known-condition counts and representative examples. Each rule
+gets a source ID after the original report sources; the original source IDs,
+report files, generation statistics and skill provenance are unchanged. This
+also works for existing reports and conversations that already retain
+`known_conditions` in their manifest.
+
+Appendices preserve the saved rule/version, time buckets, launch/component/
+partition/release identity, original line labels and captured-prefix hashes.
+They are derived from the saved manifest, not a new log scan or classification.
+They contain at most the representative examples originally captured (four per
+rule); omitted raw lines cannot be recovered. Each appendix is limited to 64 KiB,
+and ordinary chat evidence count/byte limits still apply. Resume compares the
+appendix bytes against the bound report; changed files fail verification.
+
+Answers cite appendix line numbers, with `original-line` labels identifying the
+captured source locations. Chat citations point to its private `known-conditions/`
+files; transfers copy the appendices into their own read-only `evidence/` inventory.
+Saved notes retain the corresponding citation path and hash. These appendices
+are available only to follow-up investigations; automatic report analysis still
+receives filtered inputs, and known-only reports still use zero model sessions.

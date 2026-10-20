@@ -53,7 +53,9 @@ Change only:
 - citations: up to 20 objects with source, line_start, line_end, snapshot, sha256,
   and lines. Copy source metadata from report.json; use 1-based inclusive ranges
   within that retained source. Cite only evidence actually read. Do not reuse
-  historical-note source IDs as though they belong to this report.
+  historical-note source IDs as though they belong to this report. If the source
+  includes citation_path, copy it too; it locates the retained known-condition
+  appendix in this transfer, separately from the original report.
 
 The whole record must fit 256 KiB. If no evidence supports an inference, state it
 as a hypothesis with the missing check; do not invent citations or claim a

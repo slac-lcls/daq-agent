@@ -36,8 +36,10 @@ def terminal_text(text):
 
 def render_answer(result, report):
     lines = [result['answer']]
+    sources = {s['id']: s for s in report.manifest['sources']}
     for cite in result['citations']:
-        path = report.directory / f"evidence/{cite['source']}.txt"
+        source = sources[cite['source']]
+        path = source.get('citation_path', report.directory / source['snapshot'])
         lines.append(f"[{cite['source']}:{cite['line_start']}-{cite['line_end']}] {path}")
     lines.append('Limitations: ' + ' '.join(result['limitations']))
     return terminal_text('\n'.join(lines))

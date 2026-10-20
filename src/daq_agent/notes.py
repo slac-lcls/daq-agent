@@ -72,6 +72,8 @@ def save_note(root, report, conversation, *, text=None, turn=None):
     for citation in citations:
         source = sources[citation['source']]
         evidence.append({**citation, 'snapshot': source['snapshot'], 'sha256': source['sha256'], 'lines': source['lines']})
+        if 'citation_path' in source:
+            evidence[-1]['citation_path'] = source['citation_path']
     note = {
         'schema_version': 1, 'id': uuid4().hex, 'hutch': hutch,
         'created_at': datetime.now(timezone.utc).isoformat(), 'saved_by': getpass.getuser(),
@@ -152,6 +154,10 @@ def validate_note_record(note, hutch, note_id):
         if not isinstance(note['citations'], list) or len(note['citations']) > 20:
             raise ValueError('invalid note citations')
         for citation in note['citations']:
+            if 'citation_path' in citation and (
+                    not isinstance(citation['citation_path'], str)
+                    or not Path(citation['citation_path']).is_absolute()):
+                raise ValueError('invalid retained citation path')
             if (not re.fullmatch(r'log-[1-9][0-9]{0,2}', citation['source'])
                     or citation['snapshot'] != f"evidence/{citation['source']}.txt"
                     or not re.fullmatch(r'[0-9a-f]{64}', citation['sha256'])
@@ -218,7 +224,8 @@ def render_note(note):
              f"Window: {origin['window']['start_inclusive']} to {origin['window']['end_exclusive']}",
              f"Conversation: {origin['conversation_id']}; turn: {origin['turn']} ({origin['turn_relation']})"]
     for cite in note['citations']:
-        lines.append(f"[{cite['source']}:{cite['line_start']}-{cite['line_end']}] {Path(origin['report']) / cite['snapshot']}")
+        path = cite.get('citation_path', Path(origin['report']) / cite['snapshot'])
+        lines.append(f"[{cite['source']}:{cite['line_start']}-{cite['line_end']}] {path}")
     if note['citations']:
         lines.append('Citations belong to the originating report; evidence availability has not been rechecked.')
     return terminal_text('\n'.join(lines))

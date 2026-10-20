@@ -49,6 +49,13 @@ Use `daq-agent view /path/to/report` for the existing browser evidence viewer.
 Citation checks establish valid supplied locations, not semantic correctness.
 General guidance or an explanation of missing evidence may have no citations.
 
+Known conditions excluded from initial model analysis remain available for
+questions such as “Explain the pyXPM connection resets.” Chat retains bounded,
+citable appendices of the saved counts and representative examples without
+changing the report. Their citation paths point to the private chat workspace;
+they are not additional original-report viewer pages. `/sources` includes their
+source IDs. See [known-condition follow-up evidence](known-conditions.md).
+
 Startup prints a conversation ID. Resume with:
 
 ```bash
