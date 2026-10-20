@@ -1,8 +1,10 @@
-# Transfer a report investigation to OpenCode
+# Transfer a report investigation to OpenCode or Claude
 
-Status: implemented in 0.9.0. Ordinary `daq-agent chat` still runs bounded,
+Status: implemented. Ordinary `daq-agent chat` still runs bounded,
 validated question/answer turns. A task transfer opens a separate persistent
 OpenCode investigation with the same report evidence and pinned diagnostic skills.
+Claude Code is also supported. A transfer inherits the chat's selected runtime;
+the packaged TMO default is centralized LCLS Claude.
 
 ## Start from chat
 
@@ -35,6 +37,64 @@ Resume its OpenCode conversation later with:
 daq-agent task-transfer /path/printed/by/the/command --resume
 ```
 
+## Use Claude Code
+
+From chat, select Claude while preparing the handoff:
+
+```text
+/task-transfer --runtime claude Investigate whether F003 explains the transition failure
+/task-transfer --prepare-only --runtime claude
+```
+
+The choice is saved in the handoff. You can also open an existing handoff with
+Claude explicitly, without changing the source chat or report configuration:
+
+```bash
+daq-agent task-transfer /path/to/workspace --runtime claude
+daq-agent task-transfer /path/to/workspace --runtime claude --resume
+```
+
+New Claude transfers inherit the executable, deployment, model, effort and cache
+settings from their chat. The TMO defaults are the shared LCLS binary, `opus`,
+medium effort and one-hour caching. The application calls the binary directly
+with isolated configuration; it does not invoke the interactive shell function.
+The LCLS deployment reads the shared credential file directly and selected
+endpoint/model mappings from `~/.claude-lcls/settings.json`. Arbitrary shell
+helpers, hooks and personal credentials are not imported. Personal API-token
+configuration remains available through a custom chat configuration. See
+[model runtimes](model-runtimes.md) for selection and credentials.
+
+Legacy handoffs without deployment metadata retain the personal/sonnet behavior;
+prepare a new handoff to adopt LCLS. Credentials are never written into handoff
+or launch files. No OpenCode provider file is read for a Claude launch.
+
+Each runtime keeps separate session history. Switching runtimes starts from the
+retained handoff and current note, not the other runtime's subsequent messages.
+Claude resumes the exact session ID recorded in `runtime/claude/session.json`;
+resuming before the first Claude launch produces an error. Resume retains the
+resolved model from the first launch even if a central alias changes. A new launch without
+`--resume` creates a new session; the latest launch becomes the resume target.
+Both runtimes share the handoff's assigned note and launch lock. The note's
+`origin.answer_model` identifies the source chat model; Claude's selected model
+and session ID are recorded separately in its runtime state. In-session model
+changes are recorded by Claude's own history.
+
+Claude's generic file, shell, web and delegation tools are disabled. Only its
+question tool and two local MCP tools are exposed: `read_file` checks the retained
+inventory and returns bounded numbered lines; `save_note` accepts text,
+limitations and citations, validates them, and atomically replaces the assigned
+note. It accepts no destination path or provenance fields. Pinned skills are read
+with `read_file` from the same `.opencode/skills/` inventory. Personal/project
+settings, plugins, skills and other MCP servers are not imported. These are
+application/runtime tool boundaries, not an OS sandbox; administrator-managed
+Claude policies still apply. The user may see Claude's normal first-run/trust UI.
+
+Exit Claude to return to chat. Model calls use your configured API account and
+its budget. Reports and ordinary chat can independently select Claude using
+`--runtime claude`; see [model runtimes](model-runtimes.md).
+
+## OpenCode session continuity
+
 Each transfer has isolated OpenCode state. `--resume` uses OpenCode's `--continue`
 within that state, not the user's unrelated global sessions. It resumes the latest
 OpenCode session in this transfer workspace. Starting an additional session inside
@@ -61,7 +121,7 @@ Workspaces are private directories under
   not silently replace a report's skills.
 - `note-template.json`: the new note identity, provenance and editable fields.
 - `transfer.json`: file hashes, source provenance and non-secret launch settings.
-- `runtime/`: private OpenCode state created when the investigation runs.
+- `runtime/`: private state for the selected runtime, created when it runs.
 
 Preparation verifies the original report and skill integrity. Launch verifies the
 copied handoff inventory. No original logs are rescanned. The workspace is bounded
@@ -109,7 +169,11 @@ Deterministic tests cover immutable evidence/skills, accepted-history transfer,
 size limits, path permissions, tampering, direct note compatibility and fake
 interactive launch/resume. The installed OpenCode CLI's configuration and agent
 permissions can be checked without sending evidence to a model. No live DAQ
-service or production model run is required for those tests.
+service or production model run is required for those tests. Claude tests cover
+credential isolation, exact-session resume, MCP handshakes, bounded reads,
+rejected paths/symlinks and validation before note replacement. A separate offline
+smoke check with Claude Code 2.1.270 and a loopback fake Anthropic API verified
+tool discovery, handoff reading and note saving without paid model calls.
 
 ### Note permissions and failed saves
 

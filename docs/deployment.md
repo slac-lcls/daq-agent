@@ -35,10 +35,17 @@ example defaults to the shared LCLS development installation on SDF. CLI flags
 can override those paths. Output defaults to the invoking user's
 `~/daq/agent-logs/<hutch>/YYYY/MM/<unique-run-directory>`, grouped by launch time in the
 configured timezone. Installation does not access credentials or services.
-Explicit `report` execution imports one provider/model from the selected
+When selecting the OpenCode runtime, `report` imports one provider/model from the selected
 OpenCode JSON file, preserving an external credential
 reference. It does not modify the shared configuration or inherit its agents/MCP
-servers. `--prepare-only` requires neither credentials nor an OpenCode installation.
+servers. `--prepare-only` requires neither credentials nor a model runtime installation.
+The TMO profile now selects centralized LCLS Claude, Opus/medium and one-hour
+prompt caching. It reads the shared key directly and selected model mappings
+from the user's LCLS settings, while keeping tools and session configuration
+isolated. No OpenCode provider file is read. The explicit personal Claude
+deployment remains available for other configurations. See
+[model runtimes](workflows/model-runtimes.md) for supported auth, isolated settings
+and model/version provenance. There is no automatic runtime or credential fallback.
 When upstream skills are configured, first run `daq-agent sync-skills --config
 config/hutches/tmo.toml`. This explicit network operation caches the exact pinned
 revision. Subsequent analyses verify and retain those skill bytes without fetching.

@@ -15,6 +15,7 @@ import stat
 from zoneinfo import ZoneInfo
 
 from ..artifacts import write_json, write_private
+from ..known_conditions import KnownConditions
 
 MAX_DISCOVERED = 20000
 MAX_SELECTED = 2000
@@ -151,12 +152,13 @@ def context(lines, index):
     return [(j + 1, safe(lines[j])) for j in range(lo, hi)], clipped
 
 
-def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name: str) -> list[Path]:
+def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name: str, *, known_conditions=()) -> list[Path]:
     """Create evidence for one hutch/window, retaining source platform as metadata."""
     root = root.expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("log root must be a directory")
     zone = ZoneInfo(timezone_name)
+    known = KnownConditions(known_conditions, start, end, zone)
     selected = discover(root, start, end, zone)
     target.mkdir(mode=0o700, parents=True, exist_ok=False)
     groups, records, total = {}, [], 0
@@ -173,7 +175,11 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
             partition = int(platform) if platform is not None and re.fullmatch(r"[0-7]", platform) else None
             group = groups.setdefault(launch, {
                 "counts": Counter(), "patterns": Counter(), "examples": defaultdict(list), "records": []})
-            counts, buckets = Counter(), Counter()
+            digest = hashlib.sha256(raw).hexdigest()
+            excluded, known_counts = known.record(lines, path, headers, launch, digest)
+            filtered = ['[Known-condition line omitted from model evidence.]' if i in excluded else line
+                        for i, line in enumerate(lines)] if excluded else lines
+            counts, analysis_counts, buckets = Counter(), Counter(), Counter()
             for i, line in enumerate(lines):
                 bucket = time_bucket(line, start, end, zone)
                 buckets[bucket] += 1
@@ -184,28 +190,34 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
                     categories.append("slow_link_config")
                 if not categories:
                     continue
+                for category in categories:
+                    counts[(category, bucket)] += 1
+                if i in excluded:
+                    continue
                 normalized = STAMP.sub("", safe(line)).strip()
                 normalized = re.sub(r"0x[0-9a-fA-F]+", "0xADDR", normalized)
                 normalized = re.sub(r"\[\d+\]", "[PID]", normalized)
                 normalized = re.sub(r"\b\d{5,}\b", "N", normalized)[:240]
                 group["patterns"][(bucket, normalized)] += 1
                 for category in categories:
-                    counts[(category, bucket)] += 1
+                    analysis_counts[(category, bucket)] += 1
                     examples = group["examples"][(category, bucket)]
                     signature = (headers.get("ID"), normalized)
                     if len(examples) < 4 and not any(e["signature"] == signature for e in examples):
-                        excerpt, clipped = context(lines, i)
+                        excerpt, clipped = context(filtered, i)
                         examples.append({"path": str(path), "line": i + 1, "signature": signature,
                                          "context": excerpt, "traceback_end_unconfirmed": clipped})
             record = {"path": str(path), "launch": launch, "partition": partition,
-                      "bytes_scanned": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                      "bytes_scanned": len(raw), "sha256": digest,
                       "lines": len(lines), "headers": headers,
                       "mtime_at_capture": datetime.fromtimestamp(before.st_mtime, timezone.utc).isoformat(),
                       "grew_during_capture": after.st_size > before.st_size,
                       "time_buckets": dict(buckets),
-                      "matches": {f"{c}|{b}": n for (c, b), n in counts.items()}}
+                      "matches": {f"{c}|{b}": n for (c, b), n in counts.items()},
+                      "analysis_matches": {f"{c}|{b}": n for (c, b), n in analysis_counts.items()},
+                      "known_conditions": known_counts}
             group["records"].append(record)
-            group["counts"].update(counts)
+            group["counts"].update(analysis_counts)
             records.append(record)
     if not groups:
         raise ValueError("no candidate logs found for the hutch/window")
@@ -213,6 +225,8 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
                 "hutch": hutch, "timezone_assumption": timezone_name, "files": records,
                 "total_bytes_scanned": total, "collected_at": datetime.now(timezone.utc).isoformat(),
                 "coverage": "named launch logs selected by assumed local launch time and modification time; not complete event-window coverage"}
+    metadata['known_conditions'] = known.summary()
+    metadata['analysis_matching_lines'] = sum(sum(g['patterns'].values()) for g in groups.values())
     write_json(target / "collection.json", metadata)
     launches = sorted(groups.items())
     folder = target
@@ -244,13 +258,15 @@ def collect_logs(root: Path, target: Path, hutch: str, start, end, timezone_name
                                          "launch_groups_with_matches": len(hits), "by_launch": hits}))
     documents = [("00-scope.log", "\n".join(scope) + "\n")]
     for index, (launch, group) in enumerate(launches, 1):
+        if known_conditions and any(r['known_conditions'] for r in group['records']) and not group['counts']:
+            continue  # Known-only launches are recorded locally, never model documents.
         out = [f"{hutch.upper()} launch {launch}. See 00-scope.log for count/time semantics.",
                "FILE INVENTORY (full prefixes scanned; whitelisted headers):"]
         out += [json.dumps({key: r[key] for key in ("path", "bytes_scanned", "lines", "headers")}) for r in group["records"]]
         out += ["MATCH COUNTS:"] + [f"{c} | {b} | {n}" for (c, b), n in sorted(group["counts"].items())]
         out.append("TOP MATCHING FILES PER CATEGORY (message counts, not independent failures):")
         for category in PRIORITY:
-            ranked = sorted(((sum(n for key, n in r["matches"].items() if key.startswith(category + "|")), r["path"])
+            ranked = sorted(((sum(n for key, n in r["analysis_matches"].items() if key.startswith(category + "|")), r["path"])
                              for r in group["records"]), reverse=True)
             out += [f"{category} | {n} | {path}" for n, path in ranked[:3] if n]
         out += ["TOP 15 NORMALIZED MESSAGES (patterns, not verbatim evidence):"]

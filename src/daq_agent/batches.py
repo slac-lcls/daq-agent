@@ -13,6 +13,7 @@ from .html_reports import write_html_bundle
 from .log_analysis import analyze_logs
 from .reports import MAX_BATCHES, render_report, validate_findings
 from .workflow import plan_report
+from .service_coverage import unavailable_services
 
 MAX_REPORT_FILES = MAX_BATCHES * MAX_FILES
 MAX_REPORT_BYTES = MAX_BATCHES * MAX_TOTAL_BYTES
@@ -90,7 +91,7 @@ def combine_findings(output: Path, manifest: dict) -> dict:
 
 def analyze_batches(settings, start, end, logs, output, provider, executable, timeout,
                     prepare_only, synthetic, *, batches, collected_inputs=None,
-                    skills_cache=None, local_skills_only=False, defer_completion=False):
+                    skills_cache=None, local_skills_only=False, defer_completion=False, source_origins=None):
     """Retain all evidence, run bounded sessions, then publish one complete report."""
     plan = plan_report(settings, start, end)
     output = output.absolute()
@@ -102,6 +103,7 @@ def analyze_batches(settings, start, end, logs, output, provider, executable, ti
         "created_at": datetime.now(timezone.utc).isoformat(),
         "evidence_kind": "synthetic" if synthetic else ("collected-log-summaries" if collected_inputs else "user-supplied"),
         "grafana": {"status": "not_configured", "queried": False},
+        "service_coverage": unavailable_services(),
         "coverage": "all prepared documents assigned to batches; raw-log coverage and sampling limits remain",
         "timeout_seconds_per_batch": timeout, "sources": [], "batches": [],
     }
@@ -112,6 +114,9 @@ def analyze_batches(settings, start, end, logs, output, provider, executable, ti
             logs = [output / "collection" / path.name for path in logs]
         manifest["sources"] = snapshot_logs(logs, output / "evidence",
                                              max_files=MAX_REPORT_FILES, max_total_bytes=MAX_REPORT_BYTES)
+        if source_origins:
+            for source in manifest['sources']:
+                source['original_path'] = source_origins.get(source['original_path'], source['original_path'])
         for number, indexes in enumerate(batches, 1):
             manifest["batches"].append({
                 "number": number, "directory": f"batches/{number:03}", "status": "pending",
@@ -129,6 +134,8 @@ def analyze_batches(settings, start, end, logs, output, provider, executable, ti
                 analyze_logs(settings, start, end, paths, output / batch["directory"], provider,
                              executable, timeout, prepare_only, synthetic,
                              skills_cache=skills_cache, local_skills_only=local_skills_only,
+                             source_origins={str(output / manifest['sources'][i]['snapshot']): manifest['sources'][i]['original_path']
+                                             for i in indexes} if source_origins else None,
                              batch_context={"number": batch["number"], "total": len(batches),
                                             "shared_scope": collected_inputs is not None})
             except BaseException:

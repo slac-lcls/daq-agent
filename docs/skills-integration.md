@@ -6,15 +6,17 @@ verifies or synchronizes the exact pinned revision first; it never follows a bra
 
 ## Temporary upstream source
 
-The TMO configuration temporarily uses the corrected revision from
-[LCLS2 PR #131](https://github.com/slac-lcls/lcls2/pull/131), pending its merge into
-`features/psana-daq-monitor`:
+The TMO configuration uses the consolidated revision from
+[LCLS2 PR #191](https://github.com/slac-lcls/lcls2/pull/191), based on Seshu's
+`features/psana-daq-monitor` layout and carrying forward the remaining historical
+evidence safeguards from PR #131. The upstream consolidation is a draft PR;
+this application explicitly adopts its inspected, tested commit pending merge:
 
 ```toml
 [daq_skills]
 repository = "https://github.com/slac-lcls/lcls2"
-branch = "codex/psana-daq-skills-review"
-revision = "606038fed893ce788f1b865418ae6a569f66dc1d"
+branch = "codex/daq-skills-consolidated-evidence"
+revision = "179b2bfbe73901f394222922571a0753e7ce9a06"
 directory = "psana/psana/skills"
 skills = [
   "psana-daq",
@@ -22,7 +24,6 @@ skills = [
   "psana-daq-control",
   "psana-daq-monitor",
   "psana-configdb",
-  "psana-daq-snapshot",
 ]
 ```
 
@@ -74,12 +75,11 @@ unit tests exercise synchronization against a local Git fixture.
 | Skill | Current use |
 | --- | --- |
 | `log-triage` | Packaged report contract, evidence handling, uncertainty |
-| `psana-daq` | Pinned DAQ routing and release/session interpretation guidance |
+| `psana-daq` | Pinned router/composed sweep and release/session guidance; application JSON contract takes precedence |
 | `psana-daq-logs` | Pinned log-header, component, severity, and session guidance |
 | `psana-daq-control` | State/transition interpretation from retained evidence; live tools unavailable |
 | `psana-daq-monitor` | Metrics interpretation and coverage guidance; Grafana adapter unavailable |
 | `psana-configdb` | Configuration evidence and candidate/applied distinction; service adapter unavailable |
-| `psana-daq-snapshot` | Composed diagnosis over the supplied scope; application JSON contract takes precedence |
 
 Upstream skills describe live diagnostics, including commands, sibling skills,
 and source-tree lookups. This application's task and primary-agent instructions
@@ -140,22 +140,37 @@ the repository; model output cannot write or publish them. This does not change
 the upstream DAQ skills. See [local notes](workflows/local-notes.md).
 
 
-## Temporary PR #131 adoption
+## Consolidated router adoption
 
-All six selected skills and their references are retained and verified for new
-reports; existing reports and resumed chats retain their original skill bytes.
-The suite is larger than the old chat skill budget: the skill-file limit is now
-192 KiB, while the overall per-question input limit remains 384 KiB. Each question
-still loads/audits all selected skills, so this change does not claim lower chat
-latency. No live service or paid model call is part of deterministic validation.
+The five diagnostic skills and their references are retained and verified for new
+reports. `psana-daq-snapshot` was folded into `psana-daq` upstream; no local
+replacement is maintained. Existing six-skill reports, resumed chats and transfers
+continue to use their original retained bytes, including snapshot when present.
 
-The snapshot Markdown template is diagnostic guidance, not a parser input or a
-replacement for application findings, chat answers or private notes. Missing
-services must appear in limitations. No Grafana, DAQ control, ConfigDB or GitHub
-history adapter is added here. `psana-daq-history` is absent, no issue schema is
-supplied, and historical-key retrieval remains unsupported. Upstream helper
-scripts are never executed by synchronization or by the model runtime.
+`psana-daq-history` exists upstream but is deliberately not selected. GitHub and
+shared diagnostic-store lookup, persistence and filing remain unavailable. The
+application does not offer that handoff or treat an unavailable search as no
+known issues. Current citations and all supplied evidence remain required; an
+old issue/report pointer cannot suppress a finding or skip a supplied launch.
+Private `/note` and transfer-note records stay in the application's existing
+store. Deterministic known-condition rules remain separate from upstream issue
+matching and condensation.
 
-After #131 merges, verify its resulting commit on `features/psana-daq-monitor`,
-review any additional changes, and update both the checkout configuration and
-packaged profile to that exact SHA. Do not switch to a moving branch tip.
+Reports retain the existing findings JSON schema and observation/hypothesis/
+next-check presentation. The standalone upstream Markdown template does not
+replace it. New manifests record `service_coverage` for Grafana, ConfigDB, live
+DAQ state and issue/shared-store history, all not queried. Markdown and HTML
+render that application-recorded coverage independently of model prose. Batch
+roots and child manifests both retain it; chat and transfers receive it too.
+Older reports without those fields display unknown coverage rather than acquiring
+new claims retroactively (legacy Grafana metadata remains readable).
+
+At this pin, the selected suite plus the current report-chat skill is 187,481
+bytes, within the unchanged 192 KiB skill limit; the overall per-question limit
+remains 384 KiB. Every selected skill is still loaded/audited per chat question.
+Upstream tests are not shipped into model sessions, and no upstream helpers are
+executed by synchronization or the runtime.
+
+After consolidation merges, review the resulting commit and update both TMO
+configurations to its exact SHA. See [the consolidation review and implementation
+record](proposals/005-seshu-skills-consolidation.md) for rationale and validation.

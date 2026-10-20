@@ -2,7 +2,13 @@
 # This is a proposed report configuration, not a statement of current DAQ state.
 hutch = "tmo"
 timezone = "America/Los_Angeles"
-model = "slac/us.anthropic.claude-sonnet-5"
+runtime = "claude"
+model = "opus"
+claude_deployment = "lcls"
+claude_effort = "medium"
+claude_cache_ttl = "1h"
+claude = "/sdf/group/lcls/ds/dm/apps/dev/claude/bin/current"
+known_conditions = ["daq-teardown-double-free", "pyxpm-connection-reset", "ami-recovered-connection"]
 
 # Shared LCLS development installation on SDF; CLI flags can override these.
 provider_config = "/sdf/group/lcls/ds/dm/apps/dev/opencode/opencode.json"
@@ -16,8 +22,8 @@ log_root = "/sdf/home/t/tmoopr/daq/logs"
 # Temporary upstream source; branch is descriptive, execution uses the exact SHA.
 [daq_skills]
 repository = "https://github.com/slac-lcls/lcls2"
-branch = "codex/psana-daq-skills-review"
-revision = "606038fed893ce788f1b865418ae6a569f66dc1d"
+branch = "codex/daq-skills-consolidated-evidence"
+revision = "179b2bfbe73901f394222922571a0753e7ce9a06"
 directory = "psana/psana/skills"
 skills = [
   "psana-daq",
@@ -25,5 +31,4 @@ skills = [
   "psana-daq-control",
   "psana-daq-monitor",
   "psana-configdb",
-  "psana-daq-snapshot",
 ]

@@ -1,11 +1,41 @@
 """Validate the shape and source locations of model findings; render a draft."""
 
-import json
-
+from .model_json import load_model_json
 from .report_statistics import statistics_rows
+from .known_conditions import sections as known_sections
+from .service_coverage import service_coverage_rows
 
 MAX_BATCHES = 16
 MAX_BATCH_FINDINGS = 20
+
+
+def findings_schema(sources: list[dict]) -> dict:
+    """Runtime output contract; Python still validates bounds and citations."""
+    text = {"type": "string", "minLength": 1, "maxLength": 16000}
+    citation = {
+        "type": "object", "additionalProperties": False,
+        "required": ["source", "line_start", "line_end"],
+        "properties": {
+            "source": {"type": "string", "enum": [s["id"] for s in sources]},
+            "line_start": {"type": "integer", "minimum": 1},
+            "line_end": {"type": "integer", "minimum": 1},
+        },
+    }
+    finding = {
+        "type": "object", "additionalProperties": False,
+        "required": ["title", "observation", "hypothesis", "next_check", "evidence"],
+        "properties": {**{key: dict(text) for key in ("title", "observation", "hypothesis", "next_check")},
+                       "evidence": {"type": "array", "minItems": 1, "maxItems": 20, "items": citation}},
+    }
+    return {
+        "type": "object", "additionalProperties": False,
+        "required": ["summary", "findings", "limitations"],
+        "properties": {
+            "summary": dict(text),
+            "findings": {"type": "array", "maxItems": MAX_BATCH_FINDINGS, "items": finding},
+            "limitations": {"type": "array", "minItems": 1, "maxItems": 20, "items": dict(text)},
+        },
+    }
 
 
 def _text(value, name, limit=16000):
@@ -14,10 +44,7 @@ def _text(value, name, limit=16000):
 
 
 def validate_findings(text: str, sources: list[dict], *, combined=False) -> dict:
-    text = text.strip()
-    if text.startswith("```json\n") and text.endswith("```"):
-        text = text[len("```json\n"):-3].strip()
-    result = json.loads(text)
+    result = load_model_json(text)
     if not isinstance(result, dict) or set(result) != {"summary", "findings", "limitations"}:
         raise ValueError("response must contain exactly summary, findings, and limitations")
     max_findings = MAX_BATCHES * MAX_BATCH_FINDINGS if combined else MAX_BATCH_FINDINGS
@@ -31,10 +58,15 @@ def validate_findings(text: str, sources: list[dict], *, combined=False) -> dict
     if not isinstance(findings, list) or len(findings) > max_findings:
         raise ValueError(f"findings must be a list of at most {max_findings} items")
     counts = {source["id"]: source["lines"] for source in sources}
-    for finding in findings:
+    for index, finding in enumerate(findings, 1):
         fields = {"title", "observation", "hypothesis", "next_check", "evidence"}
-        if not isinstance(finding, dict) or set(finding) != fields:
-            raise ValueError("finding has missing or unexpected fields")
+        if not isinstance(finding, dict):
+            raise ValueError(f"finding {index} must be an object")
+        if set(finding) != fields:
+            missing = ', '.join(sorted(fields - set(finding))) or 'none'
+            # Do not echo arbitrary model-provided field names into the console.
+            extra = len(set(finding) - fields)
+            raise ValueError(f"finding {index} has missing or unexpected fields: missing {missing}; unexpected field count {extra}")
         for name in fields - {"evidence"}:
             _text(finding[name], name)
         if not isinstance(finding["evidence"], list) or not 1 <= len(finding["evidence"]) <= 20:
@@ -64,7 +96,7 @@ def render_report(result: dict, manifest: dict) -> str:
         f"Hutch: {scope_description(settings)}",
         f"Window: [{manifest['window']['start_inclusive']}, {manifest['window']['end_exclusive']})", "",
         f"Evidence kind: **{manifest['evidence_kind']}**. Only supplied excerpts were analyzed.",
-        "Grafana: **not queried — integration unavailable in this workflow**.",
+        *[f"{label}: {status}" for label, status in service_coverage_rows(manifest)],
         "Citation locations were validated; diagnostic conclusions still need human review.", "",
         "## Generation and coverage", "",
         *[f"- **{label}:** {value}" for label, value in statistics_rows(manifest)], "",
@@ -85,6 +117,12 @@ def render_report(result: dict, manifest: dict) -> str:
             source = sources[citation["source"]]
             lines.append(f"- [{source['id']}, lines {citation['line_start']}–{citation['line_end']}]({source['snapshot']})")
         lines.append("")
+    known = known_sections(manifest)
+    if known:
+        lines += ['## Known conditions — no model analysis', '',
+                  'Deterministic counts and representative original source lines. Matches are deferred, not proof of healthy operation.', '']
+        for title, text in known:
+            lines += ['### ' + title, '', text, '']
     lines.extend(["## Limitations", ""])
     lines.extend(f"- {item}" for item in result["limitations"])
     lines.extend(["", "## Provenance", "", f"Model: `{settings['model']}`", "",

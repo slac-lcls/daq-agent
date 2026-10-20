@@ -1,7 +1,7 @@
 # Review: upstream session snapshots and DAQ issue history
 
 Status: historical review and integration proposal. The findings below describe
-the reviewed revision, not the current dependency. Version 0.8.2 adopts the
+the reviewed revision, not the current dependency. Version 0.8.2 adopted the
 corrected six-skill suite at `606038fed893ce788f1b865418ae6a569f66dc1d`
 from upstream PR #131, with supporting references and the suite README.
 See [current integration](../skills-integration.md) for implemented behavior and

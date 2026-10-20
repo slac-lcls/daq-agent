@@ -67,6 +67,8 @@ class BatchTests(unittest.TestCase):
         for batch in report.manifest["batches"]:
             child = json.loads((self.output / batch["directory"] / "manifest.json").read_text())
             self.assertEqual(child["status"], "completed")
+            self.assertEqual(child['service_coverage'], report.manifest['service_coverage'])
+            self.assertFalse(child['service_coverage']['diagnostic_history']['queried'])
             self.assertEqual(len(child["runtime_audit"]["sources_read"]), len(batch["source_ids"]))
         assets = report_assets(report)
         self.assertIn(b'logs/log-9.html#L1-L2', assets["report.html"][0])

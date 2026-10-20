@@ -112,8 +112,14 @@ def read_note(root, hutch, note_id):
         raw = stream.read(MAX_NOTE_BYTES + 1)
     if len(raw) > MAX_NOTE_BYTES:
         raise ValueError('note exceeds the storage budget')
+    return validate_note_record(json.loads(raw), hutch, note_id)
+
+
+def validate_note_record(note, hutch, note_id):
+    """Validate a record before storage as well as on retrieval."""
+    if len(json.dumps(note, ensure_ascii=False, indent=2).encode()) + 1 > MAX_NOTE_BYTES:
+        raise ValueError('note exceeds the storage budget')
     try:
-        note = json.loads(raw)
         if (note['schema_version'] != 1 or note['id'] != note_id or note['hutch'] != hutch
                 or note['kind'] not in {'user_note', 'saved_chat_answer', 'investigation_note'} or note['review_status'] != 'unreviewed'):
             raise ValueError('unsupported note metadata')

@@ -1,15 +1,12 @@
 """Validate and render conversational answers with report snapshot citations."""
 
-import json
+from .model_json import load_model_json
 
 
 def validate_answer(text, sources):
     if len(text.encode()) > 64 * 1024:
         raise ValueError('chat answer exceeds 64 KiB')
-    text = text.strip()
-    if text.startswith('```json\n') and text.endswith('```'):
-        text = text[8:-3].strip()
-    result = json.loads(text)
+    result = load_model_json(text)
     if not isinstance(result, dict) or set(result) != {'answer', 'citations', 'limitations'}:
         raise ValueError('chat response requires answer, citations and limitations')
     if not isinstance(result['answer'], str) or not result['answer'].strip() or len(result['answer']) > 16000:

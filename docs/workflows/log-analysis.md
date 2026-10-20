@@ -81,7 +81,7 @@ overrides this with an exact path, which must be new.
 
 `--model provider/model` overrides the
 hutch default, but that exact model must exist in the supplied provider config.
-`--timeout` defaults to 600 seconds per model session and may be set to at most 600. A real run uses
+`--timeout` defaults to 600 seconds per model session and may be set to at most 3600. A real run uses
 the model API; the regular CI workflow never does.
 
 ## Supply your own excerpts

@@ -4,6 +4,7 @@ import json
 import re
 
 from .collectors.logs import MAX_FILES, MAX_TOTAL_BYTES
+from .service_coverage import service_coverage_rows
 
 MAX_QUESTION_BYTES = 8192
 MAX_CONTEXT_BYTES = 48 * 1024
@@ -84,6 +85,7 @@ def select_context(report, question, history=()):
         'summary_excerpt': report.findings['summary'][:8000],
         'report_limitations': [s[:2000] for s in report.findings['limitations'][:8]],
         'findings': cards,
+        'service_coverage': dict(service_coverage_rows(report.manifest)),
         'coverage': {'total_findings': len(findings), 'selected_findings': len(cards),
                      'total_sources': len(report.evidence), 'selected_sources': len(selected),
                      'summary_truncated': len(report.findings['summary']) > 8000,

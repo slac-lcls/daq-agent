@@ -1,11 +1,15 @@
 # One report for a hutch and time window
 
 Status: implemented; automatic evidence batching added in 0.6.0. Run on SDF with access to the shared hutch logs,
-configured OpenCode executable, and model provider credentials:
+configured model runtime, and model provider credentials:
 
 ```bash
 daq-agent report --hutch tmo --last 2d
 ```
+
+Add `--runtime claude` to use Claude Code with your personal API configuration.
+The same collection, batching and citation checks apply. See
+[model runtimes](model-runtimes.md) for credentials, model aliases and defaults.
 
 The command prepares evidence across the candidate DAQ log sessions and produces
 **one hutch-wide report**. Platform/partition values remain source metadata; they
@@ -38,20 +42,33 @@ daq-agent report --hutch tmo --from 2026-09-19 --to 2026-09-21 \
 daq-agent report --hutch tmo --last 2d --prepare-only
 ```
 
-`--log` bypasses discovery and uses the files exactly as supplied. The internal
+`--log` bypasses discovery. Configured known-condition rules still filter matching
+lines while preserving original source identity and line positions. The internal
 Python `analyze_logs()` function remains shared implementation, not a second
 operator workflow. `--synthetic` is available only with explicit `--log` inputs.
 `--local-skills-only` explicitly disables upstream synchronization/loading.
 
 `--config` overrides the packaged profile; its hutch must match `--hutch`.
 `--log-root`, `--output`, `--provider-config`, `--opencode`, `--model`, and
-`--skills-cache` override their corresponding defaults. The OpenCode timeout is
-600 seconds **per model session**, reducible with `--timeout`. Larger reports
+`--skills-cache` override their corresponding defaults. The report timeout defaults
+to 600 seconds **per model session**, configurable from 1 to 3600 with `--timeout`
+for either runtime. For example, `--runtime claude --timeout 1800` allows thirty
+minutes per batch. Longer limits can allow more model usage; they do not guarantee
+completion. A timed-out report retains evidence and runtime records at the path
+printed in the error. Rerunning creates a new report with new model calls; report
+resume is not implemented. Larger reports
 can take multiple sessions, with model usage for each batch. A legacy `partition` config field is
 accepted for compatibility but does not restrict reporting. There is no
 `report --partition` option.
 
 ## Implementation
+
+TMO enables [known-condition rules](known-conditions.md) for teardown double-free,
+pyXPM connection resets and explicitly recovered AMI connection failures. Counts
+and representative examples appear separately in the report. Matching lines are
+excluded before model input construction, including neighboring context. An
+all-known report completes with zero model sessions and no credential or skill
+fetch requirement. Add `--no-known-conditions` to analyze these lines normally.
 
 1. `reporting.py` resolves one hutch/window scope.
 2. `collectors/session_logs.py` discovers candidate log launches, scans captured
