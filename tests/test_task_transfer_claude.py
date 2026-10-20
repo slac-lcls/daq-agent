@@ -46,14 +46,14 @@ class ClaudeTransferTests(unittest.TestCase):
     def test_selection_goal_and_old_workspace_compatibility(self):
         for flags in ('--prepare-only --runtime claude', '--runtime claude --prepare-only'):
             self.assertEqual(parse_transfer_request('/task-transfer ' + flags + ' Is F001 "related"?'),
-                             (True, 'Is F001 "related"?', 'claude'))
-        self.assertEqual(parse_transfer_request('/task-transfer --runtime claude'), (False, '', 'claude'))
+                             (True, 'Is F001 "related"?', 'claude', None))
+        self.assertEqual(parse_transfer_request('/task-transfer --runtime claude'), (False, '', 'claude', None))
         for value in ('--runtime', '--runtime nope', '--runtime claude --unknown'):
             with self.assertRaises(ValueError):
                 parse_transfer_request('/task-transfer ' + value)
         with patch('daq_agent.task_transfer.launch_transfer', return_value=0) as launch:
             self.assertEqual(main(['task-transfer', str(self.workspace), '--runtime', 'claude', '--resume']), 0)
-        launch.assert_called_once_with(self.workspace, runtime='claude', resume=True)
+        launch.assert_called_once_with(self.workspace, runtime='claude', resume=True, model=None)
         with redirect_stdout(io.StringIO()):
             self.assertEqual(main(['chat', '--resume', self.chat.name, '--state-root', str(self.root / 'chats'),
                                    '--question', '/task-transfer --prepare-only --runtime claude']), 0)

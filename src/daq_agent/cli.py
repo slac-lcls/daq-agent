@@ -90,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     transfer.add_argument("workspace", type=Path, help="workspace printed by chat /task-transfer")
     transfer.add_argument("--resume", action="store_true", help="continue this runtime's saved investigation")
     transfer.add_argument("--runtime", choices=("opencode", "claude"), help="override the handoff runtime (default: opencode for older handoffs)")
+    transfer.add_argument("--model", help="model for a new session; OpenCode requires provider/model; resume keeps the saved model")
     for command in (report, chat):
         command.add_argument("--claude-deployment", choices=("personal", "lcls"), help="Claude credentials and binary deployment")
         command.add_argument("--claude-effort", choices=("low", "medium", "high", "max"))
@@ -98,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "task-transfer":
             from .task_transfer import launch_transfer
-            return launch_transfer(args.workspace, resume=args.resume, runtime=args.runtime)
+            return launch_transfer(args.workspace, resume=args.resume, runtime=args.runtime, model=args.model)
         if args.command == "chat":
             return chat_report(args)
         if args.command == "view":

@@ -216,8 +216,8 @@ Path(meta['note_path']).write_text(json.dumps(note))
         self.assertEqual(load_transfer(directory)[1]['id'], directory.name)
 
     def test_cli_prepare_only_and_command_parsing(self):
-        self.assertEqual(parse_transfer_request('/task-transfer'), (False, '', None))
-        self.assertEqual(parse_transfer_request('/task-transfer --prepare-only inspect F001'), (True, 'inspect F001', None))
+        self.assertEqual(parse_transfer_request('/task-transfer'), (False, '', None, None))
+        self.assertEqual(parse_transfer_request('/task-transfer --prepare-only inspect F001'), (True, 'inspect F001', None, None))
         self.assertIsNone(parse_transfer_request('/task-transferred'))
         with self.assertRaises(ValueError):
             parse_transfer_request('/task-transfer --wrong')
@@ -232,7 +232,7 @@ Path(meta['note_path']).write_text(json.dumps(note))
         self.assertEqual(json.loads((directory / 'brief.json').read_text())['goal'], 'Check F001')
         with patch('daq_agent.task_transfer.launch_transfer', return_value=0) as launch:
             self.assertEqual(main(['task-transfer', str(directory), '--resume']), 0)
-        launch.assert_called_once_with(directory, resume=True, runtime=None)
+        launch.assert_called_once_with(directory, resume=True, runtime=None, model=None)
 
 
 if __name__ == '__main__':

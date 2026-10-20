@@ -376,8 +376,8 @@ def chat_report(args):
                 from .task_transfer import parse_transfer_request, prepare_transfer, launch_transfer
                 transfer = parse_transfer_request(question)
                 if transfer is not None:
-                    prepare_only, goal, runtime = transfer
-                    workspace = prepare_transfer(directory, settings, goal, runtime=runtime or settings.runtime)
+                    prepare_only, goal, runtime, model = transfer
+                    workspace = prepare_transfer(directory, settings, goal, runtime=runtime or settings.runtime, model=model)
                     print(terminal_text(f"Prepared investigation: {workspace}"))
                     print('Open investigation: ' + shlex.join(['daq-agent', 'task-transfer', str(workspace)]))
                     if not prepare_only and args.question is None and sys.stdin.isatty() and sys.stdout.isatty():

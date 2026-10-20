@@ -14,9 +14,9 @@ the packaged TMO default is centralized LCLS Claude.
 
 An investigation goal is optional. Without one, the handoff says no new goal
 was supplied; OpenCode can ask what to pursue next. Preparing the handoff makes
-no model call. In an interactive terminal, the command then launches OpenCode
-using the configured provider/model, which can incur normal model usage. Exit
-OpenCode to return to daq-agent chat.
+no model call. In an interactive terminal, the command launches the selected
+runtime using its configured model, which can incur normal model usage. Exit
+the investigation to return to daq-agent chat.
 
 To prepare files without launching a model:
 
@@ -37,6 +37,35 @@ Resume its OpenCode conversation later with:
 daq-agent task-transfer /path/printed/by/the/command --resume
 ```
 
+## Switch from Claude to OpenCode
+
+OpenCode requires a `provider/model` identifier. Select it explicitly when
+preparing an OpenCode handoff from a Claude chat:
+
+```text
+/task-transfer --runtime opencode --model slac/us.anthropic.claude-sonnet-5 Investigate F003
+/task-transfer --prepare-only --runtime opencode --model slac/us.anthropic.claude-sonnet-5
+```
+
+For an existing Claude handoff, select the model at first OpenCode launch:
+
+```bash
+daq-agent task-transfer /path/to/workspace --runtime opencode --model slac/us.anthropic.claude-sonnet-5
+daq-agent task-transfer /path/to/workspace --runtime opencode --resume
+```
+
+Preparation validates the model format before creating the handoff. Launch
+also verifies the selected model exists in the retained provider configuration
+before starting OpenCode or saving the selection. Preparing a handoff still
+requires no credentials, installed runtime or provider-file access.
+
+Each runtime keeps its own model selection. The handoff and note template retain
+the original chat model as provenance. OpenCode records the launch model privately
+in `runtime/opencode/selection.json`, so subsequent `--resume` does not need the
+model argument. Older OpenCode handoffs without that record use their retained
+OpenCode model. `--model` is for a new session: combining it with `--resume` is
+rejected for either runtime, preserving the saved session's model.
+
 ## Use Claude Code
 
 From chat, select Claude while preparing the handoff:
@@ -44,6 +73,7 @@ From chat, select Claude while preparing the handoff:
 ```text
 /task-transfer --runtime claude Investigate whether F003 explains the transition failure
 /task-transfer --prepare-only --runtime claude
+/task-transfer --runtime claude --model sonnet Investigate F003
 ```
 
 The choice is saved in the handoff. You can also open an existing handoff with
@@ -53,6 +83,9 @@ Claude explicitly, without changing the source chat or report configuration:
 daq-agent task-transfer /path/to/workspace --runtime claude
 daq-agent task-transfer /path/to/workspace --runtime claude --resume
 ```
+
+`--model` also selects a Claude alias or native model ID for a new Claude session.
+It never accepts OpenCode's provider prefix.
 
 New Claude transfers inherit the executable, deployment, model, effort and cache
 settings from their chat. The TMO defaults are the shared LCLS binary, `opus`,

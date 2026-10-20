@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from . import __version__
 from .artifacts import write_json, write_private
+from .config import validate_model
 from .notes import hutch_directory, read_note, select_notes
 from .report_context import recent_history, MAX_QUESTION_BYTES
 from .service_coverage import service_coverage_rows
@@ -41,7 +42,7 @@ def parse_transfer_request(text):
     if not match:
         return None
     value = (match[1] or '').strip()
-    prepare_only, runtime = False, None
+    prepare_only, runtime, model = False, None, None
     while value.startswith('--'):
         parts = value.split(None, 1)
         option, rest = parts[0], parts[1] if len(parts) > 1 else ''
@@ -54,22 +55,33 @@ def parse_transfer_request(text):
                 raise ValueError('--runtime must be opencode or claude')
             runtime = parts[0]
             value = parts[1].strip() if len(parts) > 1 else ''
+        elif option == '--model':
+            parts = rest.strip().split(None, 1)
+            if not parts or parts[0].startswith('--'):
+                raise ValueError('--model requires a model name')
+            model = parts[0]
+            value = parts[1].strip() if len(parts) > 1 else ''
         else:
-            raise ValueError('use /task-transfer [--prepare-only] [--runtime opencode|claude] [investigation goal]')
+            raise ValueError('use /task-transfer [--prepare-only] [--runtime opencode|claude] [--model MODEL] [investigation goal]')
     if len(value.encode()) > MAX_QUESTION_BYTES:
         raise ValueError('investigation goal must be at most 8 KiB')
-    return prepare_only, value, runtime
+    return prepare_only, value, runtime, model
 
 
-def prepare_transfer(conversation, settings, goal='', *, runtime=None):
+def prepare_transfer(conversation, settings, goal='', *, runtime=None, model=None):
     # Local imports keep chat's interactive routing independent of this module.
     from .chat import load_conversation, completed_turns
     runtime = runtime or settings.runtime
     from .claude_config import options
     from .config import runtime_settings
-    claude_model = runtime_settings(settings, runtime='claude').model
     if runtime not in {'opencode', 'claude'}:
         raise ValueError('unknown investigation runtime')
+    if runtime == 'opencode' and settings.runtime != 'opencode' and model is None:
+        raise ValueError('switching to OpenCode requires --model provider/model')
+    selected = runtime_settings(settings, runtime=runtime, model=model).model
+    claude_model = selected if runtime == 'claude' else runtime_settings(settings, runtime='claude').model
+    opencode_model = selected if runtime == 'opencode' else (
+        settings.model if settings.runtime == 'opencode' else None)
     metadata, report, upstream, _ = load_conversation(conversation)
     if not isinstance(goal, str) or len(goal.encode()) > MAX_QUESTION_BYTES:
         raise ValueError('investigation goal must be at most 8 KiB')
@@ -204,7 +216,7 @@ back into its validated chat history automatically.
             'schema_version': 1, 'application_version': __version__, 'id': transfer_id,
             'created_at': created, 'hutch': hutch, 'conversation_id': metadata['id'],
             'model': settings.model, 'provider_config': settings.provider_config, 'opencode': settings.opencode,
-            'runtime': runtime, 'claude_model': claude_model, **options(settings),
+            'runtime': runtime, 'claude_model': claude_model, 'opencode_model': opencode_model, **options(settings),
             'note_path': str(note_path), 'skills': names, 'skill_provenance': metadata['skills'], 'files': inventory,
         })
     except BaseException:
@@ -281,7 +293,9 @@ def opencode_worktree(directory):
 
 
 def transfer_config(directory, metadata, provider):
-    config = session_config(directory, provider, metadata['model'], metadata['skills'])
+    model = metadata.get('opencode_model') or metadata['model']
+    validate_model(model, 'opencode')
+    config = session_config(directory, provider, model, metadata['skills'])
     permissions = config['permission']
     permissions['skill'].pop('log-triage')
     permissions['skill']['task-transfer'] = 'allow'
@@ -337,26 +351,48 @@ def validate_investigation_note(directory, metadata, note):
     return note
 
 
-def launch_transfer(directory, *, resume=False, runtime=None):
+def launch_transfer(directory, *, resume=False, runtime=None, model=None):
     from .chat import conversation_lock
     directory, metadata = load_transfer(directory)
     runtime = runtime or metadata.get('runtime', 'opencode')
+    if model is not None:
+        if resume:
+            raise ValueError('--resume retains the saved model; omit --model or launch a new session without --resume')
+        validate_model(model, runtime)
     if runtime == 'claude':
         from .claude_transfer import launch_claude
+        if model is not None:
+            metadata = {**metadata, 'claude_model': model}
         return launch_claude(directory, metadata, resume=resume)
     if runtime != 'opencode':
         raise ValueError('unknown investigation runtime')
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise ValueError('OpenCode requires an interactive terminal; run daq-agent task-transfer PATH there')
-    if metadata['provider_config'] is None:
-        raise ValueError('task transfer requires provider_config to launch OpenCode')
-    provider = select_provider(Path(metadata['provider_config']).expanduser(), metadata['model'])
-    executable = shutil.which(str(Path(metadata['opencode']).expanduser()))
-    if not executable:
-        raise ValueError('OpenCode executable not found')
     with conversation_lock(directory):
-        write_json(directory / '.opencode/opencode.json', transfer_config(directory, metadata, provider))
-        command = [executable, str(directory), '--agent', AGENT, '--model', metadata['model']]
+        selection_path = directory / 'runtime/opencode/selection.json'
+        selected = model if model is not None else metadata.get('opencode_model', metadata['model'])
+        if resume and selection_path.exists():
+            try:
+                selected = json.loads(read_artifact(directory, 'runtime/opencode/selection.json', 4096))['model']
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError('invalid saved OpenCode model selection') from error
+        try:
+            validate_model(selected, 'opencode')
+        except ValueError as error:
+            raise ValueError('OpenCode requires --model provider/model; launch once without --resume to select it') from error
+        if metadata['provider_config'] is None:
+            raise ValueError('task transfer requires provider_config to launch OpenCode')
+        provider = select_provider(Path(metadata['provider_config']).expanduser(), selected)
+        executable = shutil.which(str(Path(metadata['opencode']).expanduser()))
+        if not executable:
+            raise ValueError('OpenCode executable not found')
+        active = {**metadata, 'opencode_model': selected}
+        write_json(directory / '.opencode/opencode.json', transfer_config(directory, active, provider))
+        selection_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        (directory / 'runtime').chmod(0o700)
+        selection_path.parent.chmod(0o700)
+        write_json(selection_path, {'model': selected})
+        command = [executable, str(directory), '--agent', AGENT, '--model', selected]
         if resume:
             command += ['--continue']
         else:

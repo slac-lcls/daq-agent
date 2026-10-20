@@ -25,7 +25,11 @@ to OpenCode requires an explicit OpenCode `--model provider/model` value.
 The ordinary chat workflow still starts a fresh bounded model session per answer
 and passes validated recent history. `/task-transfer [goal]` inherits the chat's
 runtime and opens a separate interactive investigation. An explicit
-`/task-transfer --runtime claude [goal]` selects Claude. See
+`/task-transfer --runtime claude [goal]` selects Claude. Switching a Claude handoff
+to OpenCode requires `/task-transfer --runtime opencode --model provider/model`.
+An existing handoff can select that model at launch with the same flags.
+Transfers retain separate runtime model choices; transfer `--resume` uses the
+saved choice and cannot be combined with `--model`. See
 [task transfer](task-transfer.md) for its independent session history and note tool.
 
 To make Claude the default for a custom hutch configuration, retain the existing
