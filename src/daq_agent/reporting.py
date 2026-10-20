@@ -4,10 +4,15 @@ from datetime import datetime, timedelta, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
 import re
+import json
+import time
 import shutil
 import sys
 import tempfile
 
+from .artifacts import write_json, write_private
+from .html_reports import write_html_bundle
+from .reports import render_report
 from .batches import analyze_batches, plan_batches
 from .collectors.session_logs import collect_logs
 from .config import load_settings
@@ -58,6 +63,9 @@ def report_window(last, start, end, timezone_name, *, now=None):
 def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=False,
                     prepare_only=False, local_skills_only=False, skills_cache=None, timeout=600):
     """Collect evidence once and produce one report using bounded model sessions."""
+    started_at = datetime.now(timezone.utc).isoformat()
+    started_clock = time.monotonic()
+    automatic_collection = logs is None
     if logs is None and not settings.log_root:
         raise ValueError("set log_root in the hutch configuration or pass --log-root")
     if synthetic and logs is None:
@@ -92,5 +100,41 @@ def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=
         analyzer(settings, start.isoformat(), end.isoformat(), logs, output, provider,
                  str(Path(settings.opencode).expanduser()), timeout, prepare_only, synthetic,
                  skills_cache=skills_cache, local_skills_only=local_skills_only,
-                 collected_inputs=collected, **options)
+                 collected_inputs=collected, defer_completion=True, **options)
+    # The root remains in-progress until deterministic statistics and both report
+    # formats are ready. Do not publish a completed manifest then rewrite it.
+    manifest = json.loads((output / "manifest.json").read_text())
+    try:
+        raw_files = launch_groups = None
+        if automatic_collection:
+            collection = json.loads((output / "collection/collection.json").read_text())
+            raw_files = len(collection["files"])
+            launch_groups = len({record["launch"] for record in collection["files"]})
+        manifest["generation_statistics"] = {
+            "schema_version": 1,
+            "started_at": started_at,
+            "measured_through": datetime.now(timezone.utc).isoformat(),
+            "elapsed_seconds": round(time.monotonic() - started_clock, 3),
+            "timing_scope": "report entry through initial report assembly; excludes final statistics publication",
+            "input_mode": "automatic-collection" if automatic_collection else "supplied-excerpts",
+            "raw_log_files_scanned": raw_files,
+            "launch_groups": launch_groups,
+            "supplied_log_files": None if automatic_collection else len(manifest["sources"]),
+            "evidence_documents": len(manifest["sources"]),
+            "model_sessions_completed": 0 if prepare_only else len(batches),
+            "model_sessions_planned": len(batches),
+            "numbered_daq_runs": None,
+        }
+        if not prepare_only:
+            findings = json.loads((output / "findings.json").read_text())
+            write_private(output / "report.md", render_report(findings, manifest))
+            write_html_bundle(output, findings, manifest)
+            manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
+            manifest["status"] = "completed"
+    except BaseException as error:
+        manifest["status"] = "failed"
+        manifest["failure_type"] = type(error).__name__
+        raise
+    finally:
+        write_json(output / "manifest.json", manifest)
     return {"status": "prepared_only" if prepare_only else "completed", "output": str(output)}

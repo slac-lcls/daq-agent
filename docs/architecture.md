@@ -55,6 +55,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
 | `src/daq_agent/skill_sources.py` | Explicit pinned Git synchronization and verified offline skill snapshots |
 | `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
+| `src/daq_agent/report_statistics.py` | Shared display of application-measured report timing and coverage |
 | `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
 | `src/daq_agent/html_reports.py` | Portable HTML reports and line-numbered evidence pages |
 | `src/daq_agent/report_store.py` | Shared report loading, integrity checks and latest selection |

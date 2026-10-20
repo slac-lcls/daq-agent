@@ -6,6 +6,7 @@ from html import escape
 from pathlib import Path
 
 from .reports import scope_description
+from .report_statistics import statistics_rows
 
 
 LOG_SCRIPT = r"""function highlight() {
@@ -69,6 +70,9 @@ def html_bundle(findings: dict, manifest: dict, evidence: dict[str, str]) -> dic
     body += '<p>Citation locations were validated; diagnostic conclusions need human review.</p></section>'
     body += '<nav><a href="report.md" download>Download Markdown</a> · '
     body += '<a href="findings.json" download>Download findings JSON</a></nav>'
+    body += '<section class="scope"><h2>Generation and coverage</h2>'
+    body += ''.join(paragraph(label + ':', value) for label, value in statistics_rows(manifest))
+    body += '<p>Launch groups are not numbered DAQ runs. Counts describe retained input coverage, not confirmed activity throughout the window.</p></section>'
     body += '<h2>Summary</h2>' + paragraph("", findings["summary"]) + '<h2>Findings</h2>'
     if not findings["findings"]:
         body += '<p>No findings returned; this does not establish healthy DAQ operation.</p>'

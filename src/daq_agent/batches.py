@@ -90,7 +90,7 @@ def combine_findings(output: Path, manifest: dict) -> dict:
 
 def analyze_batches(settings, start, end, logs, output, provider, executable, timeout,
                     prepare_only, synthetic, *, batches, collected_inputs=None,
-                    skills_cache=None, local_skills_only=False):
+                    skills_cache=None, local_skills_only=False, defer_completion=False):
     """Retain all evidence, run bounded sessions, then publish one complete report."""
     plan = plan_report(settings, start, end)
     output = output.absolute()
@@ -143,8 +143,9 @@ def analyze_batches(settings, start, end, logs, output, provider, executable, ti
         write_json(output / "findings.json", findings)
         write_private(output / "report.md", render_report(findings, manifest))
         write_html_bundle(output, findings, manifest)
-        manifest["status"] = "completed"
-        manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
+        if not defer_completion:
+            manifest["status"] = "completed"
+            manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
         manifest["validation"] = "each batch passed skill/evidence audit and citation validation; findings concatenated with remapped citations"
         return output
     except BaseException as error:
