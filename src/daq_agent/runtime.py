@@ -231,7 +231,7 @@ def run_audited_chat(executable, workspace, prompt, model, output, timeout, sour
     for attempt in range(2):
         remaining = int(deadline - time.monotonic())
         if remaining < 1:
-            raise TimeoutError("OpenCode exceeded the configured timeout")
+            raise TimeoutError("model runtime exceeded the configured timeout")
         attempt_prompt = prompt if attempt == 0 else AUDIT_RETRY_INSTRUCTION + prompt
         version = runner(executable, workspace, attempt_prompt, model, output, remaining, task="chat")
         try:
@@ -242,7 +242,7 @@ def run_audited_chat(executable, workspace, prompt, model, output, timeout, sour
             # Preserve the rejected response/trace, never add it to conversation history.
             rejected = output / "rejected-attempt"
             rejected.mkdir(mode=0o700)
-            for name in ("events.jsonl", "runtime.stderr.log"):
+            for name in ("events.jsonl", "runtime.stderr.log", "claude-events.jsonl", "runtime.json"):
                 path = output / name
                 if path.exists():
                     shutil.copyfile(path, rejected / name)

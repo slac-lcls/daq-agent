@@ -46,7 +46,7 @@ def _retained_skills(report):
             if not isinstance(metadata, dict):
                 raise ValueError('report has no retained skill provenance; generate a new report')
             status = metadata.get('status')
-            if status in {'not_configured', 'disabled_by_request'}:
+            if status in {'not_configured', 'disabled_by_request', 'not_required_no_model'}:
                 if manifest.get('required_upstream_skills', []):
                     raise ValueError('required report skills were not retained')
                 descriptor = {'status': status, 'skills': []}

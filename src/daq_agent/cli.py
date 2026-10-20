@@ -1,7 +1,7 @@
 """CLI for configuration, shared-log reports, supplied-log analysis, and viewing."""
 
 import argparse
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from datetime import datetime
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -11,8 +11,9 @@ import subprocess
 
 from . import __version__
 from .chat import chat_report
-from .config import Settings, load_settings, validate_model
+from .config import Settings, load_settings, runtime_settings
 from .workflow import plan_report
+from .log_analysis import MAX_REPORT_TIMEOUT
 from .viewer import view_report
 from .skill_sources import sync_skills
 from .reporting import generate_report, report_settings, report_window
@@ -49,11 +50,15 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--output", type=Path, help="new private report directory")
     report.add_argument("--provider-config", type=Path)
     report.add_argument("--opencode")
+    report.add_argument("--runtime", choices=("opencode", "claude"), help="model runtime; defaults to hutch configuration")
+    report.add_argument("--claude", help="Claude Code executable (default: claude on PATH)")
     report.add_argument("--model")
-    report.add_argument("--timeout", type=int, default=600, help="OpenCode timeout in seconds per model session; maximum 600")
+    report.add_argument("--timeout", type=int, default=600,
+                        help=f"timeout in seconds per model session (default: 600; maximum: {MAX_REPORT_TIMEOUT})")
     report.add_argument("--prepare-only", action="store_true", help="prepare report evidence without a model call")
     report.add_argument("--skills-cache", type=Path)
     report.add_argument("--local-skills-only", action="store_true", help="explicitly disable upstream skills")
+    report.add_argument('--no-known-conditions', action='store_true', help='disable configured known-condition exclusions for this report')
     sync = commands.add_parser("sync-skills", help="fetch configured skills at the pinned commit; no model call")
     sync.add_argument("--config", type=Path, required=True)
     sync.add_argument("--skills-cache", type=Path)
@@ -76,17 +81,25 @@ def main(argv: list[str] | None = None) -> int:
     chat.add_argument("--config", type=Path, help="current hutch provider/model settings; skills come from the report")
     chat.add_argument("--provider-config", type=Path)
     chat.add_argument("--opencode")
+    chat.add_argument("--runtime", choices=("opencode", "claude"), help="model runtime; resume keeps the saved choice")
+    chat.add_argument("--claude", help="Claude Code executable (default: claude on PATH)")
     chat.add_argument("--model")
-    chat.add_argument("--timeout", type=int, default=600, help="OpenCode timeout per question, 1–600 seconds")
+    chat.add_argument("--timeout", type=int, default=600, help="timeout per question, 1–600 seconds")
     chat.add_argument("--question", help="ask one question and exit; otherwise open an interactive conversation")
-    transfer = commands.add_parser("task-transfer", help="open a prepared private OpenCode investigation")
+    transfer = commands.add_parser("task-transfer", help="open a prepared private investigation")
     transfer.add_argument("workspace", type=Path, help="workspace printed by chat /task-transfer")
-    transfer.add_argument("--resume", action="store_true", help="continue the latest OpenCode session in this isolated workspace")
+    transfer.add_argument("--resume", action="store_true", help="continue this runtime's saved investigation")
+    transfer.add_argument("--runtime", choices=("opencode", "claude"), help="override the handoff runtime (default: opencode for older handoffs)")
+    transfer.add_argument("--model", help="model for a new session; OpenCode requires provider/model; resume keeps the saved model")
+    for command in (report, chat):
+        command.add_argument("--claude-deployment", choices=("personal", "lcls"), help="Claude credentials and binary deployment")
+        command.add_argument("--claude-effort", choices=("low", "medium", "high", "max"))
+        command.add_argument("--claude-cache-ttl", choices=("5m", "1h"))
     args = parser.parse_args(argv)
     try:
         if args.command == "task-transfer":
             from .task_transfer import launch_transfer
-            return launch_transfer(args.workspace, resume=args.resume)
+            return launch_transfer(args.workspace, resume=args.resume, runtime=args.runtime, model=args.model)
         if args.command == "chat":
             return chat_report(args)
         if args.command == "view":
@@ -94,9 +107,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "report":
             settings = report_settings(args.hutch, args.config)
             overrides = {name: str(getattr(args, name)) for name in
-                         ("log_root", "provider_config", "opencode", "model") if getattr(args, name) is not None}
-            settings = replace(settings, **overrides)
-            validate_model(settings.model)
+                         ("log_root", "provider_config", "opencode", "claude", "claude_deployment", "claude_effort", "claude_cache_ttl") if getattr(args, name) is not None}
+            settings = runtime_settings(settings, runtime=args.runtime, model=args.model, **overrides)
+            if args.no_known_conditions:
+                settings = runtime_settings(settings, known_conditions=())
             start, end = report_window(args.last, args.start, args.end, settings.timezone)
             output = args.output or default_output(settings)
             result = generate_report(settings, start, end, output, logs=args.log, synthetic=args.synthetic,

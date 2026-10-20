@@ -8,7 +8,7 @@ The same investigation should eventually be callable from a scheduled report,
 an operator conversation, or a live incident trigger.
 
 The implementation validates configuration/time windows, collects recent shared
-TMO launch logs, and analyzes bounded counts/excerpts through OpenCode. It also
+TMO launch logs, and analyzes bounded counts/excerpts through the configured Claude/OpenCode runtime. It also
 accepts explicitly supplied excerpts through `report --log`. One hutch/window
 gets one draft with pinned upstream DAQ guidance, validated citation locations,
 and retained evidence. Larger evidence sets use multiple bounded sessions; Python
@@ -35,7 +35,7 @@ flowchart LR
 ```
 
 The application owns orchestration, scope, tool access, limits, persistence, and
-output validation. OpenCode owns the model/tool conversation loop. Skills provide
+output validation. The selected runtime owns the model/tool conversation loop. Skills provide
 diagnostic instructions; they neither grant credentials nor enforce permissions.
 An available skill is not evidence that its tools are installed or reachable.
 
@@ -55,6 +55,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/collectors/logs.py` | Bounded copies of explicitly supplied log excerpts |
 | `src/daq_agent/skill_sources.py` | Explicit pinned Git synchronization and verified offline skill snapshots |
 | `src/daq_agent/runtime.py` | Restricted OpenCode session and bounded subprocess lifecycle |
+| `src/daq_agent/service_coverage.py` | Application-recorded external service coverage for reports, chat and transfers |
 | `src/daq_agent/report_statistics.py` | Shared display of application-measured report timing and coverage |
 | `src/daq_agent/reports.py` | Findings schema/citation-location validation and Markdown rendering |
 | `src/daq_agent/html_reports.py` | Portable HTML reports and line-numbered evidence pages |
@@ -62,7 +63,13 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/report_skills.py` | Retained diagnostic skill verification across report batches |
 | `src/daq_agent/chat.py` | Bound conversations, per-question execution and durable resume |
 | `src/daq_agent/report_context.py` | Bounded finding/evidence retrieval and history selection |
-| `src/daq_agent/task_transfer.py` | Immutable investigation handoff, isolated OpenCode launch/resume and direct-note permissions |
+| `src/daq_agent/investigation_evidence.py` | Verified follow-up appendices derived from saved known-condition metadata |
+| `src/daq_agent/task_transfer.py` | Immutable investigation handoff, runtime selection and OpenCode launch/resume permissions |
+| `src/daq_agent/claude_transfer.py` | Isolated Claude launch/resume with explicit deployment configuration |
+| `src/daq_agent/claude_config.py` | Explicit personal/LCLS credentials, executable selection and model settings |
+| `src/daq_agent/claude_runtime.py` | Bounded Claude report/chat execution and normalized results |
+| `src/daq_agent/evidence_tools.py` | Read-only Claude evidence/skill tools with independent access audit |
+| `src/daq_agent/transfer_tools.py` | Local Claude MCP boundary: retained-file reads and validated assigned-note saves |
 | `src/daq_agent/notes.py` | Local note intent parsing, private storage, provenance and bounded retrieval |
 | `src/daq_agent/chat_answers.py` | Conversational answer/citation validation and rendering |
 | `src/daq_agent/viewer.py` | Personal settings and token-protected loopback viewer |
@@ -140,3 +147,42 @@ integrity checks and launch permissions. OpenCode can write one assigned private
 investigation-note record directly, following the handoff template and skill;
 other artifacts remain read-only to its tools. These interactive answers are not
 imported into the original chat's validated history. See [task transfer](workflows/task-transfer.md).
+
+Implemented optional `--runtime claude` reuses the same immutable handoff. It runs
+Claude Code in restricted mode with deployment-selected API auth passed only in the child
+environment. General file/shell tools are unavailable; a local stdio MCP server
+exposes bounded inventory reads and a save operation that validates content and
+citations before atomically replacing only the assigned note. It accepts no write
+path or provenance fields from the model. Claude session IDs and configuration
+are isolated from both OpenCode and the user's ordinary Claude sessions.
+
+Reports and validated chat also implement `--runtime claude`. The application
+uses fresh noninteractive Claude sessions, its own read-only evidence/skill MCP
+boundary, and server-generated access records normalized to the existing audit
+format. The same batching, findings/answer validation, citations and retry rules
+apply. Runtime timeouts and output limits remain enforced outside the model.
+The requested and resolved model and CLI version are retained per model session.
+The packaged TMO profile uses centralized LCLS Claude, Opus/medium and one-hour
+prompt caching. The binary symlink is resolved per call and its path/version are
+recorded along with deployment, resolved model, effort and cache usage. Shared
+credentials are read directly without executing shell helpers; the central
+interactive skills and permissions are not imported. Chat resume preserves its
+chosen runtime and deployment settings. See [model runtimes](workflows/model-runtimes.md).
+
+Implemented known-condition rules run in application code before evidence
+selection, batching and runtime preflight. Narrow, versioned signatures produce
+separate deterministic counts and source examples. Matching lines are excluded
+from model context; all-known reports complete with zero model calls and no
+upstream skill fetch. Original source identity and time buckets remain in private
+provenance records. Configuration selects reviewed rule IDs, not arbitrary
+log-provided instructions. See [known conditions](workflows/known-conditions.md).
+
+
+New reports retain the consolidated upstream router and four diagnostic leaves.
+The router's standalone Markdown/history workflow does not replace the
+application's findings schema or current-evidence citations. `service_coverage`
+records unavailable Grafana, ConfigDB, live-state and issue/shared-store queries
+in both root and batch manifests and is rendered independently of model prose.
+History lookup/publishing remains unimplemented; private notes and deterministic
+known-condition exclusions retain their existing application ownership. Older
+reports/chats retain their original skill inventories and coverage metadata.

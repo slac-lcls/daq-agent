@@ -15,8 +15,9 @@ from .html_reports import write_html_bundle
 from .reports import render_report
 from .batches import analyze_batches, plan_batches
 from .collectors.session_logs import collect_logs
-from .config import load_settings
-from .log_analysis import analyze_logs
+from .config import load_settings, validate_model
+from .known_conditions import filter_supplied, validate_rules
+from .log_analysis import MAX_REPORT_TIMEOUT, analyze_logs
 from .runtime import select_provider
 from .skill_sources import sync_skills
 from .workflow import parse_boundary
@@ -70,46 +71,90 @@ def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=
         raise ValueError("set log_root in the hutch configuration or pass --log-root")
     if synthetic and logs is None:
         raise ValueError("--synthetic requires explicitly supplied --log inputs")
-    if not 1 <= timeout <= 600:
-        raise ValueError("timeout must be between 1 and 600 seconds")
+    if not 1 <= timeout <= MAX_REPORT_TIMEOUT:
+        raise ValueError(f"report timeout must be between 1 and {MAX_REPORT_TIMEOUT} seconds")
     provider = Path(settings.provider_config).expanduser() if settings.provider_config else None
-    if not prepare_only:
-        if provider is None:
-            raise ValueError("provider_config is required for a model call")
-        select_provider(provider, settings.model)
-        if shutil.which(str(Path(settings.opencode).expanduser())) is None:
-            raise ValueError("OpenCode executable not found; configure opencode or pass --opencode")
+    validate_model(settings.model, settings.runtime)
+    validate_rules(settings.known_conditions)
     output = output.expanduser().absolute()
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
-    if settings.daq_skills is not None and not local_skills_only:
-        # Exact pinned revision; validates/reuses an existing cache offline.
-        sync_skills(settings.daq_skills, skills_cache)
+    known, source_origins, skip_reason, input_inventory = None, None, None, None
     with tempfile.TemporaryDirectory(prefix="daq-agent-collection-") as directory:
         collected = None
         if logs is None:
             print(f"Collecting {settings.hutch} logs for {start.isoformat()} to {end.isoformat()}...", file=sys.stderr, flush=True)
             collected = Path(directory) / "inputs"
-            logs = collect_logs(Path(settings.log_root), collected, settings.hutch, start, end, settings.timezone)
+            logs = collect_logs(Path(settings.log_root), collected, settings.hutch, start, end, settings.timezone,
+                                known_conditions=settings.known_conditions)
+            collection = json.loads((collected / 'collection.json').read_text())
+            known, remaining = collection['known_conditions'], collection['analysis_matching_lines']
+        elif settings.known_conditions:
+            logs, source_origins, known, remaining = filter_supplied(logs, Path(directory) / 'filtered', settings, start, end)
+            input_inventory = Path(directory) / 'filtered/known-condition-inputs.json'
+        if known and known['matching_lines'] and remaining == 0:
+            skip_reason = 'All detected error signatures match configured known-condition rules.'
+            if collected is not None:
+                logs = [collected / '00-scope.log']
+            else:
+                scope = Path(directory) / 'known-only.log'
+                write_private(scope, 'Deterministic known-condition report for supplied excerpts. No model analysis was run.\n')
+                logs = [scope]
+                source_origins = None
+        if not prepare_only and not skip_reason:
+            if settings.runtime == 'claude':
+                from .claude_runtime import preflight_claude
+                preflight_claude(settings.claude, output, settings.claude_deployment)
+            else:
+                if provider is None:
+                    raise ValueError('provider_config is required for a model call')
+                select_provider(provider, settings.model)
+                if shutil.which(str(Path(settings.opencode).expanduser())) is None:
+                    raise ValueError('OpenCode executable not found; configure opencode or pass --opencode')
+        if settings.daq_skills is not None and not local_skills_only and not skip_reason:
+            sync_skills(settings.daq_skills, skills_cache)
         batches = plan_batches(logs, shared_scope=collected is not None)
         action = "Preparing" if prepare_only else "Analyzing"
-        session_label = "session" if len(batches) == 1 else "sessions"
-        print(f"{action} one {settings.hutch} report ({len(logs)} evidence documents; {len(batches)} model {session_label})...", file=sys.stderr, flush=True)
+        planned_sessions = 0 if skip_reason else len(batches)
+        session_label = "session" if planned_sessions == 1 else "sessions"
+        print(f"{action} one {settings.hutch} report ({len(logs)} evidence documents; {planned_sessions} model {session_label})...", file=sys.stderr, flush=True)
+        if known and known['matching_lines']:
+            print(f"Recorded {known['matching_lines']} known-condition lines outside model analysis.", file=sys.stderr, flush=True)
         analyzer = analyze_logs if len(batches) == 1 else analyze_batches
         options = {} if len(batches) == 1 else {"batches": batches}
-        analyzer(settings, start.isoformat(), end.isoformat(), logs, output, provider,
-                 str(Path(settings.opencode).expanduser()), timeout, prepare_only, synthetic,
-                 skills_cache=skills_cache, local_skills_only=local_skills_only,
-                 collected_inputs=collected, defer_completion=True, **options)
+        if skip_reason:
+            options['skip_model_reason'] = skip_reason
+        if source_origins:
+            options['source_origins'] = source_origins
+        try:
+            analyzer(settings, start.isoformat(), end.isoformat(), logs, output, provider,
+                     str(Path(settings.claude if settings.runtime == 'claude' else settings.opencode).expanduser()), timeout, prepare_only, synthetic,
+                     skills_cache=skills_cache, local_skills_only=local_skills_only,
+                     collected_inputs=collected, defer_completion=True, **options)
+        finally:
+            if (output / 'manifest.json').is_file():
+                if input_inventory:
+                    shutil.copyfile(input_inventory, output / 'known-condition-inputs.json')
+                    (output / 'known-condition-inputs.json').chmod(0o600)
+                if known and settings.known_conditions:
+                    saved = json.loads((output / 'manifest.json').read_text())
+                    saved['known_conditions'] = known
+                    write_json(output / 'manifest.json', saved)
     # The root remains in-progress until deterministic statistics and both report
     # formats are ready. Do not publish a completed manifest then rewrite it.
     manifest = json.loads((output / "manifest.json").read_text())
     try:
+        if known and settings.known_conditions:
+            manifest['known_conditions'] = known
         raw_files = launch_groups = None
         if automatic_collection:
             collection = json.loads((output / "collection/collection.json").read_text())
             raw_files = len(collection["files"])
             launch_groups = len({record["launch"] for record in collection["files"]})
+        supplied_files = None
+        if not automatic_collection:
+            supplied_files = (len(json.loads((output / 'known-condition-inputs.json').read_text())['files'])
+                              if input_inventory else len(manifest['sources']))
         manifest["generation_statistics"] = {
             "schema_version": 1,
             "started_at": started_at,
@@ -119,10 +164,10 @@ def generate_report(settings, start, end, output: Path, *, logs=None, synthetic=
             "input_mode": "automatic-collection" if automatic_collection else "supplied-excerpts",
             "raw_log_files_scanned": raw_files,
             "launch_groups": launch_groups,
-            "supplied_log_files": None if automatic_collection else len(manifest["sources"]),
+            "supplied_log_files": supplied_files,
             "evidence_documents": len(manifest["sources"]),
-            "model_sessions_completed": 0 if prepare_only else len(batches),
-            "model_sessions_planned": len(batches),
+            "model_sessions_completed": 0 if prepare_only or skip_reason else len(batches),
+            "model_sessions_planned": 0 if skip_reason else len(batches),
             "numbered_daq_runs": None,
         }
         if not prepare_only:

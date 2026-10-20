@@ -62,6 +62,10 @@ class LogAnalysisTests(unittest.TestCase):
         manifest = json.loads((output / "manifest.json").read_text())
         self.assertEqual(manifest["status"], "prepared_only")
         self.assertFalse(manifest["grafana"]["queried"])
+        self.assertEqual(set(manifest['service_coverage']),
+                         {'grafana', 'configdb', 'daq_state', 'diagnostic_history'})
+        self.assertTrue(all(record == {'queried': False, 'status': 'unavailable'}
+                            for record in manifest['service_coverage'].values()))
         self.assertEqual((output / "evidence/log-1.txt").read_bytes(), self.log.read_bytes())
         self.assertFalse((output / "report.md").exists())
 
@@ -75,6 +79,11 @@ class LogAnalysisTests(unittest.TestCase):
         self.assertEqual(json.loads((output / "findings.json").read_text()), RESPONSE)
         self.assertIn("synthetic", (output / "report.md").read_text())
         self.assertIn("not queried", (output / "report.md").read_text())
+        for name in ('report.md', 'report.html'):
+            document = (output / name).read_text()
+            for label in ('Grafana', 'ConfigDB', 'Live DAQ state', 'GitHub issues / shared diagnostic store'):
+                self.assertIn(label, document)
+            self.assertEqual(document.count('not queried'), 4)
         self.assertTrue((output / "report.html").is_file())
         self.assertTrue((output / "logs/log-1.html").is_file())
         self.assertIn("completed_at", manifest)
@@ -91,8 +100,10 @@ class LogAnalysisTests(unittest.TestCase):
 
     def test_timeout_is_recorded(self):
         self.fake_runtime(delay=True)
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(TimeoutError) as raised:
             self.run_analysis(timeout=1)
+        self.assertIn('OpenCode exceeded the 1-second session timeout', str(raised.exception))
+        self.assertIn(str(self.root / 'output'), str(raised.exception))
         self.assertEqual(json.loads((self.root / "output/manifest.json").read_text())["status"], "failed")
 
     def test_out_of_bounds_citation_rejected(self):

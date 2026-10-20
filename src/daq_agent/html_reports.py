@@ -7,6 +7,8 @@ from pathlib import Path
 
 from .reports import scope_description
 from .report_statistics import statistics_rows
+from .known_conditions import sections as known_sections
+from .service_coverage import service_coverage_rows
 
 
 LOG_SCRIPT = r"""function highlight() {
@@ -66,7 +68,7 @@ def html_bundle(findings: dict, manifest: dict, evidence: dict[str, str]) -> dic
     body += paragraph("Hutch:", scope_description(settings))
     body += paragraph("Window:", f'[{window["start_inclusive"]}, {window["end_exclusive"]})')
     body += paragraph("Evidence:", f'{manifest["evidence_kind"]}; supplied excerpts only')
-    body += paragraph("Grafana:", "Not queried — integration unavailable in this workflow.")
+    body += ''.join(paragraph(label + ':', status) for label, status in service_coverage_rows(manifest))
     body += '<p>Citation locations were validated; diagnostic conclusions need human review.</p></section>'
     body += '<nav><a href="report.md" download>Download Markdown</a> · '
     body += '<a href="findings.json" download>Download findings JSON</a></nav>'
@@ -90,6 +92,11 @@ def html_bundle(findings: dict, manifest: dict, evidence: dict[str, str]) -> dic
             body += (f'<li><a href="{escape(href, quote=True)}" target="_blank" '
                      f'rel="noopener noreferrer">{escape(label)}</a></li>')
         body += '</ul></article>'
+    known = known_sections(manifest)
+    if known:
+        body += '<h2>Known conditions — no model analysis</h2><p>Deterministic counts and representative original source lines. Matches are deferred, not proof of healthy operation.</p>'
+        for title, text in known:
+            body += '<article><h3>' + escape(title) + '</h3>' + paragraph('', text) + '</article>'
     body += '<h2>Limitations</h2><ul>'
     body += ''.join(f'<li class="prose">{escape(item)}</li>' for item in findings["limitations"])
     body += '</ul><h2>Provenance</h2>' + paragraph("Model:", settings["model"])

@@ -49,6 +49,13 @@ Use `daq-agent view /path/to/report` for the existing browser evidence viewer.
 Citation checks establish valid supplied locations, not semantic correctness.
 General guidance or an explanation of missing evidence may have no citations.
 
+Known conditions excluded from initial model analysis remain available for
+questions such as “Explain the pyXPM connection resets.” Chat retains bounded,
+citable appendices of the saved counts and representative examples without
+changing the report. Their citation paths point to the private chat workspace;
+they are not additional original-report viewer pages. `/sources` includes their
+source IDs. See [known-condition follow-up evidence](known-conditions.md).
+
 Startup prints a conversation ID. Resume with:
 
 ```bash
@@ -136,7 +143,7 @@ creation; it does not prove the report's prior authenticity. Provider credential
 are not copied into these artifacts. Directories/files are private; generated
 content from real reports must stay out of public commits.
 
-The first version uses a fresh restricted OpenCode session per question, with
+Chat uses a fresh restricted model session per question, with
 bounded history replay. Browser chat, automatic history summarization, semantic
 retrieval, multiple-report comparisons and explicit evidence expansion remain
 future work. The implementation and tests establish orchestration and citation
@@ -153,7 +160,7 @@ production diagnostic accuracy. Ordinary CI tests use a fake subprocess and need
 no credentials or model service.
 
 
-If OpenCode answers before loading required skills or reading selected evidence,
+If the model answers before loading required skills or reading selected evidence,
 chat rejects that attempt and retries once with an explicit evidence-read
 instruction. Both attempts share the original timeout and context limits. The
 terminal identifies missing skills/unread source IDs. A second incomplete attempt
@@ -167,5 +174,11 @@ runtime audit records its attempt count. This can add a second model call.
 For investigations needing a persistent OpenCode conversation, use
 `/task-transfer [goal]`. It prepares a separate workspace with the retained
 report/skills, accepted chat context and a private note destination, then opens
-OpenCode in an interactive terminal. Add `--prepare-only` immediately after the
-command to prepare without launch. See [task transfer](task-transfer.md).
+OpenCode in an interactive terminal. Use `/task-transfer --runtime claude [goal]`
+to select Claude Code with personal API configuration. Add `--prepare-only`
+to prepare without launch. See [task transfer](task-transfer.md).
+
+Use `daq-agent chat --hutch tmo --runtime claude` to run ordinary validated chat
+with Claude Code and personal API credentials. Resume remembers the selected
+runtime and model. Report evidence and retained skills are unchanged. See
+[model runtimes](model-runtimes.md) for model names, configuration and auth.

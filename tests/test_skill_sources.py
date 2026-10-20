@@ -150,8 +150,8 @@ class SkillSourceTests(unittest.TestCase):
 
     def test_tmo_config_has_exact_pin(self):
         settings = load_settings(Path("config/hutches/tmo.toml"))
-        self.assertEqual(settings.daq_skills.revision, "606038fed893ce788f1b865418ae6a569f66dc1d")
-        self.assertEqual(settings.daq_skills.skills, ('psana-daq', 'psana-daq-logs', 'psana-daq-control', 'psana-daq-monitor', 'psana-configdb', 'psana-daq-snapshot'))
+        self.assertEqual(settings.daq_skills.revision, "179b2bfbe73901f394222922571a0753e7ce9a06")
+        self.assertEqual(settings.daq_skills.skills, ('psana-daq', 'psana-daq-logs', 'psana-daq-control', 'psana-daq-monitor', 'psana-configdb'))
         from importlib.resources import files
         from daq_agent.skill_sources import descriptor
         import tomllib
@@ -159,18 +159,30 @@ class SkillSourceTests(unittest.TestCase):
         self.assertEqual(descriptor(settings.daq_skills), packaged["daq_skills"])
 
     def test_composed_suite_retains_overview_references_and_chat(self):
+        self.check_composed_suite(legacy=True)
+
+    def test_consolidated_five_skill_suite_retains_overview_references_and_chat(self):
+        self.check_composed_suite(legacy=False)
+
+    def check_composed_suite(self, *, legacy):
         from chat_fixtures import write_report, fake_chat_runtime
         from daq_agent.chat import create_conversation, answer_question, load_conversation
         from daq_agent.report_store import load_report
         from daq_agent.skill_sources import retain_skills
         names = ("psana-daq", "psana-daq-logs", "psana-daq-control",
-                 "psana-daq-monitor", "psana-configdb", "psana-daq-snapshot")
+                 "psana-daq-monitor", "psana-configdb")
+        if legacy:
+            names += ('psana-daq-snapshot',)
         for name in names[2:]:
             directory = self.repo / "skills" / name
             directory.mkdir()
             # Exercise the real suite's >128 KiB size, without vendoring its content.
             (directory / "SKILL.md").write_text(
-                f"---\nname: {name}\ndescription: Synthetic guidance\n---\n" + "guidance\n" * 4000)
+                f"---\nname: {name}\ndescription: Synthetic guidance\n---\n" + "guidance\n" * (4000 if legacy else 6000))
+        # Upstream may contain a writer without making it part of this dependency.
+        history = self.repo / 'skills/psana-daq-history'
+        history.mkdir()
+        (history / 'SKILL.md').write_text('---\nname: psana-daq-history\ndescription: Synthetic writer\n---\n')
         (self.repo / "skills/README.md").write_text("Synthetic suite overview\n")
         self.git("add", ".")
         self.git("commit", "--quiet", "-m", "composed suite")
@@ -178,6 +190,7 @@ class SkillSourceTests(unittest.TestCase):
         metadata, contents = read_snapshot(self.sync(), self.source)
         self.assertGreater(sum(map(len, contents.values())), 128 * 1024)
         self.assertIn("README.md", contents)
+        self.assertNotIn('psana-daq-history/SKILL.md', contents)
         self.assertIn("psana-daq-logs/reference/patterns.md", contents)
         report_path = write_report(self.root / "reports")
         retained = retain_skills(self.source, report_path, self.cache)
@@ -195,6 +208,12 @@ class SkillSourceTests(unittest.TestCase):
         answer_question(conversation, settings, "Explain finding 1")
         turn = json.loads((conversation / "turns/0001/manifest.json").read_text())
         self.assertEqual(turn["runtime_audit"]["skills_loaded"], sorted(["report-chat", *names]))
+        # A retained report uses its own skill inventory, regardless of current defaults.
+        self.assertEqual(tuple(load_conversation(conversation)[0]['skills']['skills']), names)
+        workspace = self.root / 'bounded-workspace'
+        permissions = session_config(workspace, {}, 'example/test', list(names))['permission']
+        self.assertNotIn('psana-daq-history', permissions['skill'])
+        self.assertEqual(permissions['skill']['*'], 'deny')
         (report_path / "upstream-skills/README.md").write_text("tampered")
         with self.assertRaisesRegex(ValueError, "integrity"):
             load_conversation(conversation)

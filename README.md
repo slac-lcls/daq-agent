@@ -5,7 +5,7 @@ an evidence-backed TMO robustness report covering an explicit historical window,
 for review by the hutch robustness monitor and the DAQ group.
 
 **Status: runnable reporting prototype.** `report` collects recent shared TMO
-logs and runs OpenCode with pinned DAQ skills to produce one report for the
+logs and runs Claude Code (the TMO default) or OpenCode with pinned DAQ skills to produce one report for the
 hutch and time window. Optional `report --log` accepts supplied excerpts.
 Reports contain cited findings, Markdown, and HTML. New reports also show generation
 time and coverage counts (raw log files, launch groups, evidence documents, and
@@ -46,7 +46,7 @@ daq-agent report --hutch tmo --last 2d
 
 This collects candidate logs for the last 48 elapsed hours, synchronizes the exact
 pinned skills if needed, and generates one draft for the entire hutch/window.
-Larger inputs are split automatically into bounded OpenCode sessions, then their
+Larger inputs are split automatically into bounded model sessions, then their
 findings are combined with citations preserved. The
 packaged TMO profile works from any directory; no interactive model selection is
 needed. To use the existing home installation without activating it:
@@ -56,6 +56,28 @@ needed. To use the existing home installation without activating it:
 ```
 
 Reports are saved under `~/daq/agent-logs/tmo/YYYY/MM/<unique-run>-report/`.
+TMO reports record known teardown double-free, pyXPM connection-reset and
+explicitly recovered AMI connection errors separately, without model analysis
+of those lines. Reports containing only these conditions use zero model sessions.
+See [known-condition rules](docs/workflows/known-conditions.md) for exact matches,
+configuration and the `--no-known-conditions` override.
+
+The TMO profile uses the centralized LCLS Claude binary and shared credential
+file, with Opus 5.5 through the `opus` alias, medium effort and one-hour prompt
+caching. Install the [LCLS Claude setup](https://psagents.github.io/#welcome) first.
+Reports, chat and task transfers use isolated application tools and the pinned
+DAQ skills, independently of the interactive installation's broader skills.
+
+```bash
+daq-agent report --hutch tmo --last 2d
+daq-agent chat --hutch tmo
+```
+
+Use `--model sonnet` to select another alias. OpenCode remains available with
+`--runtime opencode --model slac/us.anthropic.claude-sonnet-5`.
+See [model runtimes](docs/workflows/model-runtimes.md) for credentials, overrides,
+resume, cache accounting and model/version provenance.
+
 Use `daq-agent view --hutch tmo` to open the latest completed hutch report.
 Add `--prepare-only` to collect inputs without calling the model. These are
 AI drafts requiring review, not automatically verified incident reports. See
@@ -77,7 +99,7 @@ daq-agent sync-skills --config config/hutches/tmo.toml
 bash examples/log-analysis/run.sh --prepare-only
 ```
 
-To launch OpenCode on SDF and produce actual model findings from those same
+To launch the configured Claude runtime on SDF and produce actual model findings from those same
 synthetic excerpts:
 
 ```bash
@@ -85,7 +107,9 @@ bash examples/log-analysis/run.sh
 ```
 
 The TMO configuration supplies the shared LCLS provider/executable paths and
-pins all six DAQ diagnostic skills from the temporary PR #131 revision.
+pins five DAQ diagnostic skills from the consolidated router suite in
+[LCLS2 PR #191](https://github.com/slac-lcls/lcls2/pull/191). The former snapshot
+skill now lives in the router; history lookup and publishing remain unavailable.
 `sync-skills` needs Git and HTTPS access;
 reporting verifies or synchronizes that exact revision before analysis. For an
 example without upstream access, pass `--local-skills-only` explicitly.
@@ -98,8 +122,8 @@ to change the base directory, or `--output` to choose an exact new run directory
 
 The model run uses the configured API service
 and may incur usage charges. It writes `report.md`, `findings.json`, and evidence/
-runtime artifacts in a private directory. Grafana is explicitly marked **not
-queried**. Do not commit or publish output from real log excerpts.
+runtime artifacts in a private directory. Grafana, ConfigDB, live DAQ state
+and GitHub/shared-store history are explicitly marked **not queried**. Do not commit or publish output from real log excerpts.
 
 See [the workflow walkthrough](docs/workflows/log-analysis.md) for what Python,
 the skill, and the example script each do, and how to supply your own excerpts.
@@ -139,9 +163,10 @@ local note; `/note` saves the last answer with citations. `/notes` retrieves not
 specific report; `daq-agent chat --resume CHAT_ID` continues a saved conversation.
 
 For a longer investigation, enter `/task-transfer [investigation goal]`. It prepares
-an evidence-backed handoff and opens a persistent OpenCode session with the report's
+an evidence-backed handoff and opens a persistent session in the selected runtime with the report's
 pinned skills and instructions for writing a private investigation note. Use
-`/task-transfer --prepare-only [goal]` to prepare without launching OpenCode. See
+`/task-transfer --runtime claude [goal]` to select Claude explicitly, or `/task-transfer --prepare-only [goal]` to prepare
+without launching a model. See
 [task transfer](docs/workflows/task-transfer.md) for resume and tool boundaries.
 
 Chat reuses saved evidence and the report's pinned diagnostic skills without
@@ -170,8 +195,9 @@ Only reviewed synthetic or sanitized fixtures belong in `evals/`.
 - [Real TMO log analysis](docs/workflows/tmo-logs.md)
 - [Viewing reports](docs/viewing-reports.md)
 - [Chat with a report](docs/workflows/report-chat.md)
+- [Choose OpenCode or Claude](docs/workflows/model-runtimes.md)
 - [Local investigation notes](docs/workflows/local-notes.md)
-- [Transfer an investigation to OpenCode](docs/workflows/task-transfer.md)
+- [Transfer an investigation to OpenCode or Claude](docs/workflows/task-transfer.md)
 - [Skills integration](docs/skills-integration.md)
 - [CLI and first reporting milestone](docs/proposals/001-reporting-mvp.md)
 - [Future live troubleshooting](docs/proposals/002-live-troubleshooting.md)

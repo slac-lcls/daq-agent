@@ -4,6 +4,7 @@ import json
 import re
 
 from .collectors.logs import MAX_FILES, MAX_TOTAL_BYTES
+from .service_coverage import service_coverage_rows
 
 MAX_QUESTION_BYTES = 8192
 MAX_CONTEXT_BYTES = 48 * 1024
@@ -45,6 +46,7 @@ def select_context(report, question, history=()):
         query += ' ' + history[-1]['question']
         explicit = {int(ref[1:]) for ref in history[-1]['finding_ids']}
     words = tokens(query)
+    known_sources = [s for s in report.manifest['sources'] if s.get('kind') == 'known-condition-summary']
     ranked = sorted(range(1, len(findings) + 1),
                     key=lambda n: (-len(words & tokens(json.dumps(findings[n-1]))), n))
     chosen = sorted(explicit)
@@ -61,6 +63,14 @@ def select_context(report, question, history=()):
     # The collector's scope document carries counts once, across all analysis batches.
     scope = 'log-1' if report.manifest.get('collection') and 'log-1' in report.evidence else None
     priorities = ([scope] if scope else []) + sorted(required, key=lambda s: int(s[4:]))
+    # An explicit known-condition question must not lose its evidence behind
+    # unrelated findings when a turn already has eight original sources.
+    overview = not explicit and not requested_sources and (
+        not findings or bool(words & {'summary', 'summarize', 'overview'}))
+    relevant_known = [s['id'] for s in known_sources
+                      if overview or words & tokens(s['rule_id'].replace('-', ' ') + ' known conditions')
+                      or words & tokens(report.evidence[s['id']])]
+    priorities.extend(relevant_known)
     for n in chosen:
         priorities.extend(c['source'] for c in findings[n-1]['evidence'])
     ranked_sources = sorted(report.evidence, key=lambda s: (-len(words & tokens(report.evidence[s])), int(s[4:])))
@@ -84,6 +94,10 @@ def select_context(report, question, history=()):
         'summary_excerpt': report.findings['summary'][:8000],
         'report_limitations': [s[:2000] for s in report.findings['limitations'][:8]],
         'findings': cards,
+        'service_coverage': dict(service_coverage_rows(report.manifest)),
+        'known_condition_sources': [
+            {'source': s['id'], 'rule_id': s['rule_id'], 'selected': s['id'] in selected}
+            for s in known_sources],
         'coverage': {'total_findings': len(findings), 'selected_findings': len(cards),
                      'total_sources': len(report.evidence), 'selected_sources': len(selected),
                      'summary_truncated': len(report.findings['summary']) > 8000,

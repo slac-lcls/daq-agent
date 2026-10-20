@@ -1,15 +1,12 @@
 """Validate and render conversational answers with report snapshot citations."""
 
-import json
+from .model_json import load_model_json
 
 
 def validate_answer(text, sources):
     if len(text.encode()) > 64 * 1024:
         raise ValueError('chat answer exceeds 64 KiB')
-    text = text.strip()
-    if text.startswith('```json\n') and text.endswith('```'):
-        text = text[8:-3].strip()
-    result = json.loads(text)
+    result = load_model_json(text)
     if not isinstance(result, dict) or set(result) != {'answer', 'citations', 'limitations'}:
         raise ValueError('chat response requires answer, citations and limitations')
     if not isinstance(result['answer'], str) or not result['answer'].strip() or len(result['answer']) > 16000:
@@ -39,8 +36,10 @@ def terminal_text(text):
 
 def render_answer(result, report):
     lines = [result['answer']]
+    sources = {s['id']: s for s in report.manifest['sources']}
     for cite in result['citations']:
-        path = report.directory / f"evidence/{cite['source']}.txt"
+        source = sources[cite['source']]
+        path = source.get('citation_path', report.directory / source['snapshot'])
         lines.append(f"[{cite['source']}:{cite['line_start']}-{cite['line_end']}] {path}")
     lines.append('Limitations: ' + ' '.join(result['limitations']))
     return terminal_text('\n'.join(lines))

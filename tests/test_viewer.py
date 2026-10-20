@@ -84,6 +84,13 @@ class ViewerTests(unittest.TestCase):
         original.rename(legacy)
         self.assertEqual(latest_report(self.root).directory, legacy)
 
+    def test_legacy_service_coverage_remains_unknown(self):
+        report = load_report(self.report())
+        for name in ('report.md', 'report.html'):
+            document = report_assets(report)[name][0].decode()
+            self.assertEqual(document.count('Query coverage not recorded'), 4)
+            self.assertNotIn('integration unavailable', document)
+
     def test_snapshot_integrity_and_directory_boundary(self):
         directory = self.report()
         snapshot = directory / "evidence/log-1.txt"
