@@ -1,0 +1,25 @@
+{
+  "case": "configure-recovered",
+  "evidence_kind": "synthetic",
+  "required_observations": [
+    "The initial Configure failed with teb0 Phase 1 error and a nearby Results-queue permission denial.",
+    "The same launch's control log records a later Configure reaching configured at 10:05:02 -07:00."
+  ],
+  "acceptable_hypothesis": "The queue-access error may explain the initial failure; the mechanism of the later recovery is unknown.",
+  "required_unknowns": [
+    "Successful data taking, event delivery, queue ownership and any repair action are not established.",
+    "Grafana, ConfigDB, live DAQ state and diagnostic history were not queried."
+  ],
+  "unsupported_claims": [
+    "Configure remained failed throughout the excerpt or launch.",
+    "An operator deleted or repaired the queue.",
+    "A successful Configure establishes healthy data taking.",
+    "The initial failure can be omitted because a later retry succeeded."
+  ],
+  "citation_targets": [
+    {"file": "control.log", "line_start": 3, "line_end": 7},
+    {"file": "teb0.log", "line_start": 3, "line_end": 5}
+  ],
+  "incident_grouping": "One initial failure followed by an observed successful retry in the same launch.",
+  "review": "Human semantic review; exact wording and finding count are not required."
+}

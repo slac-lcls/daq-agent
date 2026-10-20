@@ -1,0 +1,7 @@
+# SYNTHETIC TEST FIXTURE: not a real TMO incident or deployed release
+# ID: pyxpm
+# PLATFORM: 0
+# TESTRELDIR: /synthetic/release
+# hutch=tmo launch=synthetic-launch-003
+2026-09-18T10:00:00-07:00 ERR pvxs.tcp.io connection to Client synthetic closed with socket error 104 : Connection reset by peer
+2026-09-18T10:00:01-07:00 ERR pvxs.tcp.io connection to Client synthetic closed with socket error 104 : Connection reset by peer

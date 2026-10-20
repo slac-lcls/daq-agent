@@ -28,6 +28,13 @@ are needed for report viewing or these checks.
 
 ## Agent evaluations
 
+The [report comparison baseline](evaluation/report-baseline.md) fixes four
+synthetic cases, input/skill hashes and semantic review criteria. It records the
+retained single-case runtime comparison, including the Claude scope-overstatement
+failure. Additional cases have passed model-free preparation, not live semantic
+evaluation. The [post-merge workflow check](evaluation/post-merge-workflow-check.md)
+records saved-report link, appendix and transfer validation separately.
+
 Each case should have a fixed scope, synthetic or reviewed sanitized evidence,
 expert-reviewed expected observations, supported hypotheses, known unknowns,
 required citations, and assertions about actions that must not occur.
