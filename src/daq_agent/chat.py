@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import shlex
+import sys
 import tempfile
 from uuid import uuid4
 
@@ -330,7 +332,7 @@ def chat_report(args):
         save_transcript(directory, completed_turns(directory, report))
         print(describe_report(report, manifest, settings.model))
         print(terminal_text('Local notes: ' + manifest['notes_root']))
-        print('Commands: /report, /findings, /sources, /note [TEXT], /notes [ID or search], /exit. Resume with: daq-agent chat --resume ' + directory.name)
+        print('Commands: /report, /findings, /sources, /note [TEXT], /notes [ID or search], /task-transfer [GOAL], /exit. Resume with: daq-agent chat --resume ' + directory.name)
         while True:
             try:
                 question = args.question if args.question is not None else input('daq-chat> ').strip()
@@ -342,14 +344,26 @@ def chat_report(args):
                     raise ValueError('question must be nonempty')
                 continue
             try:
+                from .task_transfer import parse_transfer_request, prepare_transfer, launch_transfer
+                transfer = parse_transfer_request(question)
+                if transfer is not None:
+                    prepare_only, goal = transfer
+                    workspace = prepare_transfer(directory, settings, goal)
+                    print(terminal_text(f"Prepared investigation: {workspace}"))
+                    print('Open investigation: ' + shlex.join(['daq-agent', 'task-transfer', str(workspace)]))
+                    if not prepare_only and args.question is None and sys.stdin.isatty() and sys.stdout.isatty():
+                        launch_transfer(workspace)
+                    if args.question is not None:
+                        break
+                    continue
                 if handle_note_request(question, directory):
                     if args.question is not None:
                         break
                     continue
-            except (OSError, ValueError) as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 if args.question is not None:
                     raise
-                print(terminal_text(f'Note operation failed: {error}'))
+                print(terminal_text(f'Local operation failed: {error}'))
                 continue
             if question == '/exit':
                 break
@@ -364,7 +378,7 @@ def chat_report(args):
                 for source in report.manifest['sources']:
                     print(terminal_text(f"{source['id']}: {source['lines']} lines; {source['original_path']}"))
             elif question.startswith('/'):
-                print('Unknown command. Use /report, /findings, /sources, /note, /notes or /exit.')
+                print('Unknown command. Use /report, /findings, /sources, /note, /notes, /task-transfer or /exit.')
             else:
                 try:
                     print('Preparing saved evidence and asking OpenCode...', flush=True)

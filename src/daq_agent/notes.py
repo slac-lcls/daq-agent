@@ -115,7 +115,7 @@ def read_note(root, hutch, note_id):
     try:
         note = json.loads(raw)
         if (note['schema_version'] != 1 or note['id'] != note_id or note['hutch'] != hutch
-                or note['kind'] not in {'user_note', 'saved_chat_answer'} or note['review_status'] != 'unreviewed'):
+                or note['kind'] not in {'user_note', 'saved_chat_answer', 'investigation_note'} or note['review_status'] != 'unreviewed'):
             raise ValueError('unsupported note metadata')
         if not isinstance(note['text'], str) or not note['text'].strip() or len(note['text'].encode()) > MAX_TEXT_BYTES:
             raise ValueError('invalid note text')
@@ -128,8 +128,15 @@ def read_note(root, hutch, note_id):
                 or not re.fullmatch(r'[0-9a-f]{64}', origin['report_fingerprint'])
                 or not re.fullmatch(NOTE_ID, origin['conversation_id'])
                 or (origin['turn'] is not None and (type(origin['turn']) is not int or not 1 <= origin['turn'] <= 1000))
-                or origin['turn_relation'] not in {'saved_answer', 'conversation_context_only'}):
+                or origin['turn_relation'] not in {'saved_answer', 'conversation_context_only', 'transferred_investigation'}):
             raise ValueError('invalid note provenance')
+        if note['kind'] == 'investigation_note':
+            if (origin['turn_relation'] != 'transferred_investigation'
+                    or origin.get('transfer_id') != note['id']
+                    or not isinstance(origin.get('answer_model'), str) or not origin['answer_model']):
+                raise ValueError('invalid investigation note provenance')
+        elif origin['turn_relation'] == 'transferred_investigation':
+            raise ValueError('invalid investigation note kind')
         for key in ('start_inclusive', 'end_exclusive'):
             if datetime.fromisoformat(origin['window'][key]).utcoffset() is None:
                 raise ValueError('invalid note window')

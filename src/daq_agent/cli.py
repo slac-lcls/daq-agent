@@ -79,8 +79,14 @@ def main(argv: list[str] | None = None) -> int:
     chat.add_argument("--model")
     chat.add_argument("--timeout", type=int, default=600, help="OpenCode timeout per question, 1–600 seconds")
     chat.add_argument("--question", help="ask one question and exit; otherwise open an interactive conversation")
+    transfer = commands.add_parser("task-transfer", help="open a prepared private OpenCode investigation")
+    transfer.add_argument("workspace", type=Path, help="workspace printed by chat /task-transfer")
+    transfer.add_argument("--resume", action="store_true", help="continue the latest OpenCode session in this isolated workspace")
     args = parser.parse_args(argv)
     try:
+        if args.command == "task-transfer":
+            from .task_transfer import launch_transfer
+            return launch_transfer(args.workspace, resume=args.resume)
         if args.command == "chat":
             return chat_report(args)
         if args.command == "view":

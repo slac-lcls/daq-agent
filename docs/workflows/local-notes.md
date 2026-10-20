@@ -110,3 +110,10 @@ prints the selected notes root.
 A future proposal step may condense selected notes into a reviewed DAQ knowledge
 change. Publishing, editing/deleting notes through chat, automatic confirmation of
 fixes, and remote/shared knowledge synchronization are not part of this version.
+
+
+In 0.9.0, `/task-transfer` can also supply OpenCode with a unique private note
+path and the existing JSON record conventions. Such records have kind
+`investigation_note` with transfer provenance and remain unreviewed. OpenCode
+writes that note directly; this does not change the local `/note` command or
+allow edits to prior notes. See [task transfer](task-transfer.md).

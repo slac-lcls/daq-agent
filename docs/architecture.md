@@ -61,6 +61,7 @@ An available skill is not evidence that its tools are installed or reachable.
 | `src/daq_agent/report_skills.py` | Retained diagnostic skill verification across report batches |
 | `src/daq_agent/chat.py` | Bound conversations, per-question execution and durable resume |
 | `src/daq_agent/report_context.py` | Bounded finding/evidence retrieval and history selection |
+| `src/daq_agent/task_transfer.py` | Immutable investigation handoff, isolated OpenCode launch/resume and direct-note permissions |
 | `src/daq_agent/notes.py` | Local note intent parsing, private storage, provenance and bounded retrieval |
 | `src/daq_agent/chat_answers.py` | Conversational answer/citation validation and rendering |
 | `src/daq_agent/viewer.py` | Personal settings and token-protected loopback viewer |
@@ -129,3 +130,12 @@ wording or the last accepted answer; relevant notes can inform later questions a
 historical unreviewed context. Application code owns writes and retrieval; the
 report-chat skill explains how to interpret notes. Promotion to shared DAQ skills
 or knowledge remains a separate review/publication workflow.
+
+
+`/task-transfer` prepares a separate persistent OpenCode workspace from a bound
+chat. It retains the exact skills, all report evidence and accepted conversation,
+with an extractive brief and optional next goal. The application owns packaging,
+integrity checks and launch permissions. OpenCode can write one assigned private
+investigation-note record directly, following the handoff template and skill;
+other artifacts remain read-only to its tools. These interactive answers are not
+imported into the original chat's validated history. See [task transfer](workflows/task-transfer.md).
