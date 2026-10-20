@@ -21,11 +21,14 @@ proposals, implementation plans, and project decisions.
 | [Chat design](proposals/003-report-chat.md) | Accepted design and future extensions | First terminal implementation complete |
 | [Live troubleshooting](proposals/002-live-troubleshooting.md) | Watcher and incident-driven investigations | Future proposal |
 | [Evaluation](evaluation.md) | Code tests and diagnostic-quality evaluation | Initial strategy |
+| [Report comparison baseline](evaluation/report-baseline.md) | Fixed synthetic cases, semantic rubric and retained runtime comparison | Baseline established; broader model evaluation pending |
+| [Post-merge workflow check](evaluation/post-merge-workflow-check.md) | Saved report links, known-condition evidence and transfer verification | Local checks passed 2026-10-20 |
+| [Standalone report investigations](proposals/007-standalone-report-investigation.md) | Independent central Claude/Codex sessions with report and personal skills | Proposed; not implemented |
 | [Deployment](deployment.md) | Development, service installation, state, credentials | Proposed deployment |
 
-Current choices: a standalone Python repository; OpenCode as the current
-runtime; reusable diagnostic skills maintained upstream; historical TMO reports
-first; read-only evidence tools; human review of findings.
+Current choices: a standalone Python repository; centralized Claude for TMO
+with OpenCode also supported; reusable diagnostic skills maintained upstream;
+historical TMO reports first; read-only evidence tools; human review of findings.
 
 Open decisions: operational host and owner, project credential/budget, reviewed
 future upstream skill home, validated source access/retention, distribution channel,

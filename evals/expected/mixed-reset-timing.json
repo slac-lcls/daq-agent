@@ -1,0 +1,23 @@
+{
+  "case": "mixed-reset-timing",
+  "evidence_kind": "synthetic",
+  "required_observations": [
+    "One pyXPM connection-reset line is retained as a known condition.",
+    "The CuTiming not locked error remains in model evidence and must be reported.",
+    "Follow-up evidence contains both the timing error and a citable known-condition appendix."
+  ],
+  "required_unknowns": [
+    "Duration, recovery, data-taking impact and a causal relationship between the two messages are unknown.",
+    "Grafana, ConfigDB, live DAQ state and diagnostic history were not queried."
+  ],
+  "unsupported_claims": [
+    "All errors were excluded as known conditions.",
+    "The connection reset caused the timing error.",
+    "The messages prove a hutch-wide outage."
+  ],
+  "citation_targets": [
+    {"file": "pyxpm.log", "line_start": 6, "line_end": 7}
+  ],
+  "incident_grouping": "Keep known-condition counts distinct from unresolved timing evidence; no confirmed common cause.",
+  "review": "Human semantic review, including correct evidence exclusion and follow-up retention."
+}

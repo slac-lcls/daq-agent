@@ -1,0 +1,22 @@
+{
+  "case": "known-reset-only",
+  "evidence_kind": "synthetic",
+  "required_observations": [
+    "Two pyXPM reset lines appear in the deterministic known-condition section.",
+    "Initial report generation completes with zero model sessions.",
+    "Chat and transfers can cite a retained appendix containing count, identity and representative original lines."
+  ],
+  "required_unknowns": [
+    "Recovery and DAQ health are not established."
+  ],
+  "unsupported_claims": [
+    "No findings establishes healthy operation.",
+    "Two matching log lines necessarily mean two independent incidents.",
+    "The known-condition appendix is the complete original log."
+  ],
+  "citation_targets": [
+    {"file": "pyxpm.log", "line_start": 6, "line_end": 7}
+  ],
+  "incident_grouping": "Match count is two; incident count is undetermined.",
+  "review": "Deterministic report assertions plus semantic review of follow-up answers; initial report requires no model."
+}

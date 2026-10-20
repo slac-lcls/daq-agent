@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "application_revision": "ab75ff65f0a34d06216a76373053531d1c8f4915",
+  "application_version": "0.9.2",
+  "known_condition_rule_version": 1,
+  "evidence_kind": "synthetic",
+  "hutch": "tmo",
+  "timezone": "America/Los_Angeles",
+  "window": {
+    "start_inclusive": "2026-09-18T00:00:00+00:00",
+    "end_exclusive": "2026-09-19T00:00:00+00:00"
+  },
+  "upstream_revision": "179b2bfbe73901f394222922571a0753e7ce9a06",
+  "upstream_skills": [
+    "psana-daq",
+    "psana-daq-logs",
+    "psana-daq-control",
+    "psana-daq-monitor",
+    "psana-configdb"
+  ],
+  "application_skill_sha256": "386f8b5cfe1d30ed8f4f6e91f1f280b9d331344bef7ed827716cd4794ec6feb6",
+  "cases": [
+    {
+      "id": "configure-permission",
+      "inputs": [
+        {
+          "file": "cases/configure-permission/control.log",
+          "sha256": "2b0b2bda543d9d074744e6db1dcd0d0e54c134c3cfbd560ad041f62fa6265779"
+        },
+        {
+          "file": "cases/configure-permission/teb0.log",
+          "sha256": "3962507355f5db86c7a3b76b6bc863a756d7fd3c03ae57578a33d742a8fb62be"
+        }
+      ],
+      "expectations": "expected/configure-permission.json",
+      "known_conditions": []
+    },
+    {
+      "id": "configure-recovered",
+      "inputs": [
+        {
+          "file": "cases/configure-recovered/control.log",
+          "sha256": "baba0ba8815f72efdc8827ef62f05304218a82fcb7a078a6ea4db70cb8ad5c5e"
+        },
+        {
+          "file": "cases/configure-recovered/teb0.log",
+          "sha256": "e42a39ae02dd8b182da3dab474666b73586b019df32ee4e54dca3de20fc1c444"
+        }
+      ],
+      "expectations": "expected/configure-recovered.json",
+      "known_conditions": []
+    },
+    {
+      "id": "known-reset-only",
+      "inputs": [
+        {
+          "file": "cases/known-reset-only/pyxpm.log",
+          "sha256": "ac56bc4f08ec39098c1d5232573b65ad14f91d14159cbf17a130f3f127479029"
+        }
+      ],
+      "expectations": "expected/known-reset-only.json",
+      "known_conditions": [
+        "daq-teardown-double-free",
+        "pyxpm-connection-reset",
+        "ami-recovered-connection"
+      ]
+    },
+    {
+      "id": "mixed-reset-timing",
+      "inputs": [
+        {
+          "file": "cases/mixed-reset-timing/pyxpm.log",
+          "sha256": "a845ef7bc0f36b0433d78a48116ed615185ea10f6aae0db22912f7300212405b"
+        }
+      ],
+      "expectations": "expected/mixed-reset-timing.json",
+      "known_conditions": [
+        "daq-teardown-double-free",
+        "pyxpm-connection-reset",
+        "ami-recovered-connection"
+      ]
+    }
+  ],
+  "review": "Semantic review required; this inventory is not a model-quality result."
+}
