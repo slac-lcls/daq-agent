@@ -27,6 +27,12 @@ save the placeholder or claim a write succeeded without a tool result. This file
 belongs to this transfer and may be refined during it; prior notes are immutable
 from this session. A separate transfer allocates a separate note.
 
+If saving is denied, stop save attempts for this turn. Do not switch tools,
+change paths, or try placeholder content to work around the denial. Tell the user
+that the note was not saved, include the draft in your response, and wait for the
+session configuration to be repaired. The attempted content remains in the
+private runtime session history; do not claim that this makes it a saved note.
+
 Preserve schema_version, id, hutch, created_at, saved_by, kind, review_status and
 origin exactly as supplied. The created_at field identifies the transfer, not the
 time of a DAQ event. Keep review_status unreviewed and kind investigation_note.

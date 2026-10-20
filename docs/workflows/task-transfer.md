@@ -110,3 +110,21 @@ size limits, path permissions, tampering, direct note compatibility and fake
 interactive launch/resume. The installed OpenCode CLI's configuration and agent
 permissions can be checked without sending evidence to a model. No live DAQ
 service or production model run is required for those tests.
+
+### Note permissions and failed saves
+
+OpenCode 1.2 checks both `write` and `edit` using the `edit` permission and a
+path relative to its project worktree. The launcher computes that exact note
+path (non-Git workspaces use `/`; linked Git worktrees use the main checkout).
+Read and external-directory rules remain absolute. Root detection failures and
+wildcards in note permission paths fail closed; other notes are never writable.
+Launch/resume regenerates the configuration, including for existing transfers.
+
+The primary agent instructs OpenCode to stop after a denied save, report the
+failure with its draft, and wait for repair. This instruction also applies when
+resuming older transfers whose retained skill predates it. Each turn is capped
+at 12 model steps. `continue_loop_on_deny` is explicitly false for user-rejected
+requests; in OpenCode 1.2.10 it does not stop configured-rule denials by itself.
+The step cap bounds those loops if the model ignores the stop instruction; it is
+not a guarantee of exactly one save attempt. Failed tool inputs remain in the
+private OpenCode history and are not published as notes.

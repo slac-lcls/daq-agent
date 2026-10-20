@@ -1,6 +1,7 @@
 from contextlib import redirect_stdout
 from dataclasses import replace
 import io
+import fnmatch
 import json
 import os
 from pathlib import Path
@@ -16,7 +17,7 @@ from daq_agent.config import Settings
 from daq_agent.notes import read_note, list_notes, select_notes
 from daq_agent.report_store import load_report
 from daq_agent.task_transfer import (AGENT, parse_transfer_request, prepare_transfer,
-    load_transfer, transfer_config, launch_transfer, validate_transfer_note)
+    load_transfer, transfer_config, launch_transfer, validate_transfer_note, opencode_worktree)
 
 
 class TransferTests(unittest.TestCase):
@@ -81,7 +82,7 @@ class TransferTests(unittest.TestCase):
         config = transfer_config(directory, meta, {})
         permissions = config['permission']
         self.assertEqual(permissions['*'], 'deny')
-        self.assertEqual(permissions['edit'], {'*': 'deny', meta['note_path']: 'allow'})
+        self.assertEqual(permissions['edit'], {'*': 'deny', os.path.relpath(meta['note_path'], '/'): 'allow'})
         self.assertEqual(permissions['read']['*'], 'deny')
         self.assertNotIn(str(directory / 'runtime'), permissions['read'])
         self.assertNotIn(str(directory / '.opencode/opencode.json'), permissions['read'])
@@ -91,6 +92,43 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(config['agent']['build'], {'disable': True})
         self.assertEqual(config['mcp'], {})
         self.assertEqual(config['plugin'], [])
+
+    def test_edit_permission_matches_runtime_relative_path_only_for_assigned_note(self):
+        directory = prepare_transfer(self.chat, self.settings)
+        _, meta = load_transfer(directory)
+        rules = transfer_config(directory, meta, {})['permission']['edit']
+        def action(path):
+            pattern = os.path.relpath(path, opencode_worktree(directory))
+            return next(v for k, v in reversed(list(rules.items())) if fnmatch.fnmatchcase(pattern, k))
+        self.assertEqual(action(meta['note_path']), 'allow')
+        self.assertEqual(action(str(Path(meta['note_path']).with_name('other.json'))), 'deny')
+        self.assertEqual(action(directory / 'report.json'), 'deny')
+        self.assertEqual(action(directory / 'evidence/log-1.txt'), 'deny')
+        config = transfer_config(directory, meta, {})
+        self.assertFalse(config['experimental']['continue_loop_on_deny'])
+        self.assertEqual(config['agent'][AGENT]['steps'], 12)
+        self.assertIn('stop trying to save', config['agent'][AGENT]['prompt'])
+
+    def test_worktree_detection_git_linked_and_non_git(self):
+        self.assertEqual(opencode_worktree(self.root), Path('/'))
+        repo = self.root / 'repo'
+        def git(*args):
+            subprocess.run(['git', *args], check=True, capture_output=True, text=True)
+        git('init', str(repo))
+        git('-C', str(repo), '-c', 'user.name=Synthetic', '-c', 'user.email=test@example.invalid',
+            'commit', '--allow-empty', '-m', 'synthetic')
+        nested = repo / 'nested'
+        nested.mkdir()
+        self.assertEqual(opencode_worktree(nested), repo)
+        linked = self.root / 'linked'
+        git('-C', str(repo), 'worktree', 'add', '--detach', str(linked))
+        self.assertEqual(opencode_worktree(linked), repo)
+        with patch.dict(os.environ, {'GIT_WORK_TREE': str(repo)}):
+            with self.assertRaisesRegex(ValueError, 'Git directory overrides'):
+                opencode_worktree(linked)
+        with patch('daq_agent.task_transfer.subprocess.run', side_effect=subprocess.TimeoutExpired('git', 10)):
+            with self.assertRaisesRegex(ValueError, 'cannot determine'):
+                opencode_worktree(linked)
 
     def test_integrity_and_note_symlink_fail_closed(self):
         directory = prepare_transfer(self.chat, self.settings)
@@ -146,7 +184,7 @@ assert os.environ['XDG_DATA_HOME'] == str(workspace / 'runtime/data')
 assert os.environ['OPENCODE_DISABLE_EXTERNAL_SKILLS'] == 'true'
 config = json.loads((workspace / '.opencode/opencode.json').read_text())
 meta = json.loads((workspace / 'transfer.json').read_text())
-assert config['permission']['edit'] == {'*': 'deny', meta['note_path']: 'allow'}
+assert config['permission']['edit'] == {'*': 'deny', os.path.relpath(meta['note_path'], '/'): 'allow'}
 assert config['permission']['*'] == 'deny'
 assert config['mcp'] == {} and config['plugin'] == []
 marker = workspace / 'fake-session.json'
